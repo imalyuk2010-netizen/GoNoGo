@@ -36,7 +36,7 @@ Cross-country planning is where the pieces of primary flight training come toget
 ## Project layout
 
 ```
-flight-planner/
+gonogo/
   index.html                 page structure
   style.css                  styles (responsive, works on a phone)
   js/
@@ -109,10 +109,10 @@ See the step-by-step guide at the bottom of this file if you've never done it. S
 **A. Put the code on GitHub**
 
 1. Create a free account at https://github.com if you don't have one.
-2. Click **New repository** (the "+" in the top right). Name it `flight-planner`, leave it **Public**, do **not** add a README/.gitignore (this folder already has them). Click **Create repository**.
-3. GitHub shows a page with commands. In Terminal, inside the `flight-planner` folder, run:
+2. Click **New repository** (the "+" in the top right). Name it `gonogo`, leave it **Public**, do **not** add a README/.gitignore (this folder already has them). Click **Create repository**.
+3. GitHub shows a page with commands. In Terminal, inside the `gonogo` folder, run:
    ```bash
-   git remote add origin https://github.com/YOUR-USERNAME/flight-planner.git
+   git remote add origin https://github.com/YOUR-USERNAME/gonogo.git
    git push -u origin main
    ```
    The first push asks you to log in — GitHub will open a browser window, or you can use a personal access token as the password.
@@ -121,9 +121,9 @@ See the step-by-step guide at the bottom of this file if you've never done it. S
 **B. Deploy on Vercel**
 
 1. Go to https://vercel.com and sign up **with your GitHub account** (that's what links them).
-2. Click **Add New… → Project**. Vercel lists your GitHub repositories; click **Import** next to `flight-planner`.
+2. Click **Add New… → Project**. Vercel lists your GitHub repositories; click **Import** next to `gonogo`.
 3. Leave every setting at its default: Framework Preset **Other**, no build command, output directory blank. Click **Deploy**.
-4. About a minute later you get a URL like `https://flight-planner-xxxx.vercel.app`. Open it — the map, weather (through `/api/wx`), and everything else should work.
+4. About a minute later you get a URL like `https://gonogo-xxxx.vercel.app`. Open it — the map, weather (through `/api/wx`), and everything else should work.
 5. From now on, every `git push` to `main` redeploys automatically.
 
 If something fails, the Vercel dashboard → your project → **Deployments** → click the deployment → **Functions** tab shows the log for `api/wx`.
