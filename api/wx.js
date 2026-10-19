@@ -31,7 +31,7 @@ export default async function handler(req, res) {
   try {
     const upstream = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'flight-planner (student VFR planning project)' },
+      headers: { 'User-Agent': 'GoNoGo (student VFR planning project)' },
     });
     const body = await upstream.text();
     res.setHeader('Content-Type', 'application/json; charset=utf-8');

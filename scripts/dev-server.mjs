@@ -52,6 +52,6 @@ createServer(async (req, res) => {
     res.end(`Server error: ${err.message}`);
   }
 }).listen(PORT, () => {
-  console.log(`Flight Planner dev server → http://localhost:${PORT}`);
+  console.log(`GoNoGo dev server → http://localhost:${PORT}`);
   console.log('Static files from', ROOT, '· /api/wx proxied via api/wx.js');
 });

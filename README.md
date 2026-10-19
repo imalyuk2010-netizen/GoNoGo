@@ -1,6 +1,6 @@
-# Flight Planner — VFR Cross-Country Planning Aid
+# GoNoGo — VFR Cross-Country Flight Planner
 
-> **Disclaimer — read this first.** Flight Planner is a **training and planning aid**. It is **not for actual navigation**. Aircraft performance numbers are approximate planning values, not POH/AFM data. Winds are a single forecast sample. Always verify with official sources — current sectional/terminal charts, a standard weather briefing (1-800-WX-BRIEF / Leidos / ForeFlight), NOTAMs, and the POH for the specific aircraft you fly — before any flight.
+> **Disclaimer — read this first.** GoNoGo is a **training and planning aid**. It is **not for actual navigation**. Aircraft performance numbers are approximate planning values, not POH/AFM data. Winds are a single forecast sample. Always verify with official sources — current sectional/terminal charts, a standard weather briefing (1-800-WX-BRIEF / Leidos / ForeFlight), NOTAMs, and the POH for the specific aircraft you fly — before any flight.
 
 A single-page web app that does the arithmetic of a VFR cross-country navigation log the way a student pilot is taught to do it on an E6B — and shows its work.
 
@@ -8,7 +8,7 @@ Built for the Congressional App Challenge. No frameworks, no build step: plain H
 
 ## What it does
 
-Enter a departure, a destination, an aircraft, an altitude, and fuel on board. Flight Planner returns:
+Enter a departure, a destination, an aircraft, an altitude, and fuel on board. GoNoGo returns:
 
 | Output | How it is computed |
 |---|---|
