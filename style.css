@@ -390,6 +390,7 @@ body.va-open { overflow: hidden; }
 }
 .verdict-alert[hidden] { display: none !important; }
 .va-nogo { background: rgba(176, 18, 18, .95); color: #fff; --va-edge: 255, 255, 255; --va-stripe-a: #111; --va-stripe-b: #ff3b3b; }
+.va-go { background: rgba(14, 116, 56, .96); color: #fff; --va-edge: 255, 255, 255; --va-stripe-a: #064e24; --va-stripe-b: #22c55e; }
 .va-tight { background: rgba(250, 190, 20, .96); color: #2b1b00; --va-edge: 60, 36, 0; --va-stripe-a: #111; --va-stripe-b: #ffd43b; }
 .verdict-alert::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -426,3 +427,7 @@ body.va-open { overflow: hidden; }
 .va-tight .va-sound { background: rgba(255, 255, 255, .35); }
 .va-sound:hover { background: rgba(0, 0, 0, .3); }
 .va-sound:focus-visible { outline: 4px solid rgba(var(--va-edge), .9); outline-offset: 3px; }
+
+.va-go .va-btn-primary { background: #fff; color: #0b5d2b; }
+.va-go .va-title { animation: none; }
+.va-go::after { animation-duration: 2.6s; }

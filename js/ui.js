@@ -374,11 +374,14 @@ function beep(freq, start, dur, type) {
   (sound.nodes ||= []).push(o);
 }
 
-function playAlarm(nogo) {
+function playAlarm(v) {
   if (sound.muted || !sound.ctx || sound.ctx.state !== 'running') return;
   stopAlarm();
   const t0 = sound.ctx.currentTime + 0.05;
-  if (nogo) {
+  if (v === 'GO') {
+    // Soft rising two-note chime.
+    beep(523, t0, 0.22, 'sine'); beep(784, t0 + 0.2, 0.4, 'sine');
+  } else if (v === 'NO-GO') {
     // Urgent two-tone siren, ~3 s.
     for (let i = 0; i < 10; i++) beep(i % 2 ? 640 : 960, t0 + i * 0.3, 0.28, 'sawtooth');
   } else {
@@ -402,15 +405,18 @@ function closeVerdictAlert() {
 }
 
 function showVerdictAlert(v, d) {
-  if (v !== 'NO-GO' && v !== 'TIGHT') { closeVerdictAlert(); return; }
+  if (v !== 'NO-GO' && v !== 'TIGHT' && v !== 'GO') { closeVerdictAlert(); return; }
   const { verdict, trip, reserve, fuelOnBoard, dep, dest } = d;
   const nogo = v === 'NO-GO';
-  va.root.className = `verdict-alert ${nogo ? 'va-nogo' : 'va-tight'}`;
+  va.root.className = `verdict-alert ${nogo ? 'va-nogo' : v === 'TIGHT' ? 'va-tight' : 'va-go'}`;
   va.route.textContent = `${dep.ident} → ${dest.ident}`;
-  va.title.textContent = nogo ? 'NO-GO' : 'TIGHT';
+  va.title.textContent = v;
   va.text.textContent = nogo
     ? `You do not have enough fuel for this flight. Short by ${fmt(Math.abs(verdict.marginGal), 1)} gal (${fmt(Math.abs(verdict.marginMin))} min) once the legal reserve is included.`
-    : `Legal, but only ${fmt(verdict.marginMin)} minutes of extra fuel (${fmt(verdict.marginGal, 1)} gal) beyond the legal reserve. A headwind or a diversion could use it up.`;
+    : v === 'TIGHT'
+      ? `Legal, but only ${fmt(verdict.marginMin)} minutes of extra fuel (${fmt(verdict.marginGal, 1)} gal) beyond the legal reserve. A headwind or a diversion could use it up.`
+      : `You have enough fuel, with ${fmt(verdict.marginMin)} minutes (${fmt(verdict.marginGal, 1)} gal) to spare beyond the legal reserve. Still check weather and NOTAMs before you fly.`;
+  va.change.hidden = v === 'GO';
   va.stats.innerHTML =
     `<div><dt>Trip fuel</dt><dd>${fmt(trip, 1)} gal</dd></div>` +
     `<div><dt>Legal reserve</dt><dd>${fmt(reserve, 1)} gal</dd></div>` +
@@ -422,7 +428,7 @@ function showVerdictAlert(v, d) {
   if (window.lenis) window.lenis.stop();
   va.review.focus({ preventScroll: true });
   renderSoundToggle();
-  playAlarm(nogo);
+  playAlarm(v);
 }
 
 va.sound.addEventListener('click', () => {
@@ -442,7 +448,7 @@ document.addEventListener('keydown', (e) => {
   if (va.root.hidden) return;
   if (e.key === 'Escape') { e.preventDefault(); closeVerdictAlert(); }
   else if (e.key === 'Tab') {
-    const f = [va.review, va.change, va.sound];
+    const f = [va.review, va.change, va.sound].filter((b) => !b.hidden);
     const i = f.indexOf(document.activeElement);
     e.preventDefault();
     f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
