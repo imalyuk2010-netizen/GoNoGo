@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1a33">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="GoNoGo">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <title>GoNoGo — VFR Flight Planner</title>
   <meta name="description" content="GoNoGo is a VFR cross-country flight planner for student pilots: great-circle route, wind triangle, fuel and FAR reserves, live METAR/TAF, winds aloft, and alternates.">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
@@ -127,7 +134,7 @@
       <h2 class="step-q">Where are you departing from?</h2>
       <div class="field autocomplete">
         <label for="dep" class="sr-only">Departure</label>
-        <input id="dep" type="text" placeholder="KSMF" spellcheck="false" aria-autocomplete="list" aria-controls="depList" aria-expanded="false">
+        <input id="dep" type="text" placeholder="KSMF" spellcheck="false" autocapitalize="characters" autocorrect="off" enterkeyhint="next" aria-autocomplete="list" aria-controls="depList" aria-expanded="false">
         <ul class="suggestions" id="depList" role="listbox" data-lenis-prevent hidden></ul>
         <div class="hint" id="depHint">Type an ICAO code, airport name, or city — at least 2 characters</div>
       </div>
@@ -140,7 +147,7 @@
       <h2 class="step-q">Where are you headed?</h2>
       <div class="field autocomplete">
         <label for="dest" class="sr-only">Destination</label>
-        <input id="dest" type="text" placeholder="KOAK" spellcheck="false" aria-autocomplete="list" aria-controls="destList" aria-expanded="false">
+        <input id="dest" type="text" placeholder="KOAK" spellcheck="false" autocapitalize="characters" autocorrect="off" enterkeyhint="next" aria-autocomplete="list" aria-controls="destList" aria-expanded="false">
         <ul class="suggestions" id="destList" role="listbox" data-lenis-prevent hidden></ul>
         <div class="hint" id="destHint">Type at least 2 characters</div>
       </div>
@@ -159,9 +166,9 @@
       </div>
       <div id="aircraftSpecs" class="specs" hidden></div>
       <div id="customFields" class="custom-grid" hidden>
-        <div class="field"><label for="customKtas">Cruise KTAS @ 8,000 ft</label><input id="customKtas" type="number" min="1" step="1" placeholder="110"></div>
-        <div class="field"><label for="customGph">Burn (gph)</label><input id="customGph" type="number" min="0.1" step="0.1" placeholder="8.5"></div>
-        <div class="field"><label for="customUsable">Usable fuel (gal)</label><input id="customUsable" type="number" min="1" step="0.5" placeholder="48"></div>
+        <div class="field"><label for="customKtas">Cruise KTAS @ 8,000 ft</label><input id="customKtas" type="number" inputmode="decimal" min="1" step="1" placeholder="110"></div>
+        <div class="field"><label for="customGph">Burn (gph)</label><input id="customGph" type="number" inputmode="decimal" min="0.1" step="0.1" placeholder="8.5"></div>
+        <div class="field"><label for="customUsable">Usable fuel (gal)</label><input id="customUsable" type="number" inputmode="decimal" min="1" step="0.5" placeholder="48"></div>
       </div>
     </div>
   </section>
@@ -172,7 +179,7 @@
       <h2 class="step-q">How much fuel is on board?</h2>
       <div class="field">
         <label for="fuelOnBoard">Usable fuel on board (gal)</label>
-        <input id="fuelOnBoard" type="number" min="0" step="0.5" placeholder="Auto-filled from aircraft">
+        <input id="fuelOnBoard" type="number" inputmode="decimal" enterkeyhint="next" min="0" step="0.5" placeholder="Auto-filled from aircraft">
         <div class="hint">Defaults to the aircraft's full usable fuel. Lower it if you're not topping off.</div>
       </div>
     </div>
@@ -184,7 +191,7 @@
       <h2 class="step-q">How high will you cruise?</h2>
       <div class="field">
         <label for="altitude">Planned cruise altitude (ft MSL)</label>
-        <input id="altitude" type="number" min="500" max="17500" step="500" value="5500">
+        <input id="altitude" type="number" inputmode="numeric" enterkeyhint="next" min="500" max="17500" step="500" value="5500">
         <div class="hint">Checked against the VFR hemispheric rule, 14 CFR 91.159.</div>
       </div>
     </div>
@@ -209,7 +216,7 @@
       <h2 class="step-q">What is fuel costing you?</h2>
       <div class="field">
         <label for="fuelPrice">Fuel price ($ per gallon)</label>
-        <input id="fuelPrice" type="number" min="0" step="0.01" value="6.50">
+        <input id="fuelPrice" type="number" inputmode="decimal" enterkeyhint="next" min="0" step="0.01" value="6.50">
       </div>
     </div>
   </section>
@@ -225,8 +232,8 @@
       </fieldset>
       <div class="hint" id="windSourceHint">Open-Meteo forecast at the route midpoint, nearest pressure level to your altitude.</div>
       <div id="manualWind" class="custom-grid" hidden>
-        <div class="field"><label for="windDir">Wind from (° true)</label><input id="windDir" type="number" min="0" max="360" step="1" value="0"></div>
-        <div class="field"><label for="windSpeed">Speed (kt)</label><input id="windSpeed" type="number" min="0" step="1" value="0"></div>
+        <div class="field"><label for="windDir">Wind from (° true)</label><input id="windDir" type="number" inputmode="numeric" min="0" max="360" step="1" value="0"></div>
+        <div class="field"><label for="windSpeed">Speed (kt)</label><input id="windSpeed" type="number" inputmode="numeric" min="0" step="1" value="0"></div>
       </div>
     </div>
   </section>
@@ -249,6 +256,7 @@
     <div class="map-wrap">
       <div id="map" role="img" aria-label="Route map"></div>
       <div id="mapFallback" class="map-fallback" hidden></div>
+      <p class="map-hint">Use two fingers to move or zoom the map.</p>
     </div>
 
     <div id="emptyState" class="empty">
@@ -283,6 +291,7 @@
         integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.4/dist/lenis.min.js"></script>
 <script type="module" src="js/scroll.js"></script>
+<script type="module" src="js/pwa.js"></script>
 <script type="module" src="js/ui.js"></script>
 </body>
 </html>

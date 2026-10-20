@@ -51,7 +51,9 @@ function initMap() {
     return;
   }
   // Wheel zoom is off so the smooth-scrolling page never gets trapped over the map.
-  map = L.map('map', { worldCopyJump: true, scrollWheelZoom: false }).setView([39, -98], 4);
+  // On touch screens one-finger dragging is off too (two-finger pan/zoom still works), so a swipe over the map scrolls the page.
+  const touch = window.matchMedia('(pointer: coarse)').matches;
+  map = L.map('map', { worldCopyJump: true, scrollWheelZoom: false, dragging: !touch }).setView([39, -98], 4);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -350,7 +352,7 @@ function unlockAudio() {
     if (sound.ctx.state === 'suspended') sound.ctx.resume();
   } catch { /* audio unsupported */ }
 }
-['pointerdown', 'keydown', 'touchstart'].forEach((t) => document.addEventListener(t, unlockAudio, { passive: true }));
+['pointerdown', 'keydown', 'touchstart', 'touchend', 'click'].forEach((t) => document.addEventListener(t, unlockAudio, { passive: true }));
 
 function stopAlarm() {
   if (!sound.master) return;

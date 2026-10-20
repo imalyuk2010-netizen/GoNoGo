@@ -3,6 +3,10 @@
 // prefers reduced motion.
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Touch screens keep native momentum scrolling and use CSS scroll-snap (see style.css);
+// Lenis smoothing and the wheel/idle snapping below are for mouse and trackpad.
+const touch = window.matchMedia('(pointer: coarse)').matches;
+document.documentElement.classList.toggle('is-touch', touch);
 const root = document.documentElement;
 const bar = document.getElementById('scrollProgress');
 const parallax = [...document.querySelectorAll('[data-speed]')];
@@ -33,7 +37,7 @@ function onScroll(y) {
 }
 
 // ---------- Lenis ----------
-if (typeof window.Lenis === 'function' && !reduced) {
+if (typeof window.Lenis === 'function' && !reduced && !touch) {
   const lenis = new window.Lenis({ lerp: 0.085, wheelMultiplier: 1, smoothWheel: true });
   window.lenis = lenis;
   lenis.on('scroll', ({ scroll }) => onScroll(scroll));
@@ -47,6 +51,9 @@ onScroll(window.scrollY);
 // ---------- one page per input ----------
 const topbar = document.querySelector('.topbar');
 const topH = () => (topbar ? topbar.offsetHeight : 64);
+const setTopVar = () => document.documentElement.style.setProperty('--top', `${topH()}px`);
+setTopVar();
+window.addEventListener('resize', setTopVar);
 const steps = [...document.querySelectorAll('.step')];
 const dotsEl = document.getElementById('stepDots');
 const stepTop = (el) => el.getBoundingClientRect().top + window.scrollY - topH();
@@ -90,7 +97,7 @@ function updateActive(y) {
 // Snap to a page when scrolling settles inside the form region (leaves hero / results free).
 let snapTimer = null;
 function scheduleSnap() {
-  if (reduced || !steps.length) return;
+  if (reduced || touch || !steps.length) return;
   clearTimeout(snapTimer);
   snapTimer = setTimeout(() => {
     if (window.lenis?.isScrolling === 'smooth' && window.lenis.isLocked) return;
@@ -111,7 +118,7 @@ function scheduleSnap() {
 let wheelLock = 0;
 let lastWheel = 0;
 let lastDelta = 0;
-if (!reduced && steps.length) {
+if (!reduced && !touch && steps.length) {
   document.addEventListener('wheel', (e) => {
     if (e.ctrlKey || e.target.closest?.('[data-lenis-prevent]') || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
     const now = performance.now();

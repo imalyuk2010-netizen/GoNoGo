@@ -38,6 +38,8 @@ Cross-country planning is where the pieces of primary flight training come toget
 ```
 gonogo/
   index.html                 page structure
+  manifest.webmanifest       install-as-app metadata (name, icons, colors)
+  sw.js                      service worker: offline app shell + cached airport data
   style.css                  styles (responsive, works on a phone)
   js/
     nav.js                   pure math: haversine, bearing, wind triangle, fuel, reserves, 91.159
@@ -45,7 +47,8 @@ gonogo/
     airports.js              airport database load, autocomplete search, alternate finder
     aircraft.js              aircraft catalog + custom aircraft
     ui.js                    form, map, and result rendering
-    scroll.js                smooth scrolling (Lenis from jsDelivr), hero parallax, reveals, progress bar
+    scroll.js                smooth scrolling (Lenis from jsDelivr), hero parallax, reveals, progress bar, per-page snapping
+    pwa.js                   registers the service worker (install + offline)
   data/
     aircraft.json            ~30 GA aircraft, approximate planning figures
     airports.json            GENERATED — 47,985 airports worldwide (see below)
@@ -75,6 +78,18 @@ node scripts/dev-server.mjs
 ```
 
 Any static file server also works (`python3 -m http.server 8000`), but then `/api/wx` doesn't exist and METAR/TAF will fail with a readable message, because aviationweather.gov does not allow cross-origin browser requests. Everything else (route, winds aloft, map, alternates) still works.
+
+## Platforms
+
+GoNoGo is a responsive web app, so one codebase runs everywhere there is a modern browser:
+
+| Platform | How |
+|---|---|
+| **Desktop** (Windows, macOS, Linux; Chrome, Edge, Firefox, Safari) | Open the site. Smooth scrolling and one-flick-per-page snapping with mouse or trackpad. |
+| **iPhone / iPad** (Safari) | Open the site, then Share → **Add to Home Screen** to install it like an app. |
+| **Android** (Chrome, Samsung Internet) | Open the site, then menu → **Install app**. |
+
+Mobile details: native touch scrolling with CSS scroll-snap (one question per screen), safe-area handling for notches, landscape layouts, number/airport keyboards, 44 px touch targets, and two-finger map panning so the map never traps a scroll. It is a PWA: after the first visit the app opens offline (all 47,985 airports are cached); live weather and map tiles still need a connection.
 
 ## Data sources and licenses
 

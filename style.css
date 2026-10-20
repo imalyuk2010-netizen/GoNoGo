@@ -1,6 +1,7 @@
 /* ===== GoNoGo — styles ===== */
 
 :root {
+  --top: 71px;
   --bg: #f3f5f8;
   --surface: #ffffff;
   --surface-2: #f7f9fc;
@@ -25,6 +26,8 @@
 }
 
 * { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+a, button, input, select, label { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 html, body { margin: 0; padding: 0; }
 [hidden] { display: none !important; }
 body {
@@ -44,7 +47,7 @@ a { color: var(--primary); }
 .topbar {
   position: sticky; top: 0; z-index: 1200;
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 12px 24px;
+  padding: calc(12px + env(safe-area-inset-top)) calc(24px + env(safe-area-inset-right)) 12px calc(24px + env(safe-area-inset-left));
   background: rgba(11, 26, 51, 0.86);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   color: #fff;
@@ -81,7 +84,7 @@ a { color: var(--primary); }
 }
 @media (max-width: 960px) {
   .layout { grid-template-columns: 1fr; padding: 14px; gap: 14px; }
-  .topbar { padding: 12px 14px; }
+  .topbar { padding: calc(12px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) 12px calc(14px + env(safe-area-inset-left)); }
   .data-status { display: none; }
   .topnav a:not(.topnav-cta) { display: none; }
 }
@@ -289,7 +292,7 @@ button { font: inherit; cursor: pointer; }
 
 .hero {
   position: relative; overflow: hidden; isolation: isolate;
-  min-height: calc(100svh - 64px); display: grid; align-items: center;
+  min-height: calc(100vh - var(--top, 71px)); min-height: calc(100svh - var(--top, 71px)); display: grid; align-items: center;
   padding: 72px 24px 96px; color: #fff;
   background: radial-gradient(120% 90% at 85% 10%, #123a73 0%, #0b1a33 55%, #070f1f 100%);
 }
@@ -335,7 +338,7 @@ button { font: inherit; cursor: pointer; }
 /* ---------- one full page per input ---------- */
 .steps { counter-reset: step; }
 .step {
-  min-height: calc(100svh - 64px); display: grid; place-items: center; padding: 56px 24px;
+  min-height: calc(100vh - var(--top, 71px)); min-height: calc(100svh - var(--top, 71px)); display: grid; place-items: center; padding: 56px 24px;
   border-top: 1px solid var(--border); background: var(--bg);
 }
 .step:nth-child(even) { background: var(--surface-2); }
@@ -389,6 +392,7 @@ button { font: inherit; cursor: pointer; }
 body.va-open { overflow: hidden; }
 .verdict-alert {
   position: fixed; inset: 0; z-index: 2000; display: grid; grid-template-rows: auto 1fr auto; text-align: center;
+  overflow-y: auto; overscroll-behavior: contain; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
   animation: va-in .35s cubic-bezier(.2,.8,.2,1);
 }
 .verdict-alert[hidden] { display: none !important; }
@@ -403,7 +407,7 @@ body.va-open { overflow: hidden; }
 .va-hazard { height: 28px; background: repeating-linear-gradient(-45deg, var(--va-stripe-a) 0 22px, var(--va-stripe-b) 22px 44px); }
 .va-body { display: grid; align-content: center; justify-items: center; gap: 18px; padding: 24px; position: relative; z-index: 1; }
 .va-route { font: 700 clamp(16px, 2.4vw, 26px) var(--mono); letter-spacing: .12em; opacity: .85; }
-.va-title { font-size: clamp(84px, 22vw, 300px); line-height: .9; font-weight: 900; letter-spacing: -0.05em; text-shadow: 0 6px 40px rgba(0, 0, 0, .25); animation: va-shake .6s .15s 1; }
+.va-title { font-size: clamp(64px, min(22vw, 26vh), 300px); line-height: .9; font-weight: 900; letter-spacing: -0.05em; text-shadow: 0 6px 40px rgba(0, 0, 0, .25); animation: va-shake .6s .15s 1; }
 .va-text { max-width: 760px; font-size: clamp(18px, 2.6vw, 30px); line-height: 1.35; font-weight: 600; }
 .va-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 6px 0 0; }
 .va-stats div { min-width: 140px; padding: 12px 18px; border-radius: 14px; background: rgba(0, 0, 0, .2); border: 2px solid rgba(var(--va-edge), .35); }
@@ -434,3 +438,47 @@ body.va-open { overflow: hidden; }
 .va-go .va-btn-primary { background: #fff; color: #0b5d2b; }
 .va-go .va-title { animation: none; }
 .va-go::after { animation-duration: 2.6s; }
+
+/* ---------- all platforms: touch screens, phones, landscape, installed app ---------- */
+.step, .results, .how, .hero { scroll-margin-top: var(--top, 71px); }
+html.is-touch { scroll-snap-type: y proximity; }
+html.is-touch .step { scroll-snap-align: start; }
+
+.map-hint { display: none; }
+@media (pointer: coarse) {
+  .map-hint { display: block; margin-top: 8px; text-align: center; font-size: 13px; color: var(--text-muted); }
+  .btn-ghost, .btn-hero, .btn-primary, .topnav .topnav-cta { min-height: 44px; }
+  .suggestions li { padding: 14px 12px; }
+  .step fieldset.seg span { min-height: 52px; display: inline-flex; align-items: center; }
+}
+.va-sound { top: calc(44px + env(safe-area-inset-top)); }
+.va-hazard-bottom { padding-bottom: env(safe-area-inset-bottom); box-sizing: content-box; }
+.footer { padding-bottom: env(safe-area-inset-bottom); }
+.va-body { padding-left: 24px; padding-right: 24px; }
+
+@media (max-width: 520px) {
+  .topbar { gap: 10px; }
+  .brand-sub { display: none; }
+  .hero { padding: 56px 18px 88px; }
+  .hero-actions { gap: 16px; }
+  .step-q { margin-bottom: 28px; }
+  .step fieldset.seg span { padding: 14px 26px; font-size: 20px; }
+  .step .specs { grid-template-columns: repeat(3, 1fr); padding: 12px; }
+  .step .custom-grid { grid-template-columns: 1fr; gap: 6px; }
+  .step #manualWind { grid-template-columns: 1fr 1fr; }
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .stat .value { font-size: 22px; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .va-body { gap: 8px; padding: 10px 24px; align-content: start; }
+  .va-text { font-size: 16px; }
+  .va-stats div { padding: 6px 10px; min-width: 96px; }
+  .va-stats dd { font-size: 18px; }
+  .va-btn { padding: 10px 20px; font-size: 15px; }
+  .va-hazard { height: 12px; }
+  .step { padding: 28px 24px; }
+  .step-q { font-size: clamp(28px, 7vh, 52px); margin-bottom: 18px; }
+}
+@media (display-mode: standalone) {
+  body { overscroll-behavior-y: none; }
+}
