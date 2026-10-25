@@ -333,9 +333,8 @@ button { font: inherit; cursor: pointer; }
 .steps { counter-reset: step; }
 .step {
   min-height: calc(100vh - var(--top, 71px)); min-height: calc(100svh - var(--top, 71px)); display: grid; place-items: center; padding: 56px 24px;
-  border-top: 1px solid var(--border); background: var(--bg);
+  background: var(--bg);
 }
-.step:nth-child(even) { background: var(--surface-2); }
 .step-inner { width: 100%; max-width: 860px; }
 .step-q { font-size: clamp(34px, 6.4vw, 78px); line-height: 1.04; letter-spacing: -0.032em; font-weight: 700; margin-bottom: 40px; }
 .step .field { margin-bottom: 18px; }
@@ -434,8 +433,9 @@ body.va-open { overflow: hidden; }
 
 /* ---------- all platforms: touch screens, phones, landscape, installed app ---------- */
 .step, .results, .how, .hero { scroll-margin-top: var(--top, 71px); }
-html.is-touch { scroll-snap-type: y proximity; }
-html.is-touch .step { scroll-snap-align: start; }
+html.is-touch { scroll-snap-type: y mandatory; }
+html.is-touch .hero, html.is-touch .how-head, html.is-touch .story, html.is-touch .step, html.is-touch .results-wrap { scroll-snap-align: start; }
+html.is-touch .footer { scroll-snap-align: end; }
 
 .map-hint { display: none; }
 @media (pointer: coarse) {
@@ -477,8 +477,9 @@ html.is-touch .step { scroll-snap-align: start; }
 }
 
 /* ---------- "What you get": scroll story with pinned pictures ---------- */
-.how { max-width: 1200px; padding-bottom: 0; }
-.story { position: relative; margin-top: 40px; height: calc(100vh - var(--top, 71px) + var(--n, 3) * 85vh); height: calc(100svh - var(--top, 71px) + var(--n, 3) * 85svh); }
+.how { max-width: 1200px; padding: 0 24px; }
+.how-head { min-height: calc(100vh - var(--top, 71px)); min-height: calc(100svh - var(--top, 71px)); display: grid; align-content: center; }
+.story { position: relative; margin-top: 0; height: calc(100vh - var(--top, 71px) + var(--n, 3) * 85vh); height: calc(100svh - var(--top, 71px) + var(--n, 3) * 85svh); }
 .story-stick {
   position: sticky; top: var(--top, 71px); height: calc(100vh - var(--top, 71px)); height: calc(100svh - var(--top, 71px)); min-height: 480px;
   display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: center; padding-bottom: 28px;

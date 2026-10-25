@@ -123,23 +123,42 @@ function updateActive(y) {
   }
 }
 
-// Snap to a page when scrolling settles inside the form region (leaves hero / results free).
+// Every "page" in the scroll order, as scroll positions: intro, headline, each story picture, each question.
+function pageStops() {
+  const H = topH();
+  const abs = (el) => el.getBoundingClientRect().top + window.scrollY - H;
+  const stops = [];
+  if (hero) stops.push(0);
+  const head = document.querySelector('.how-head');
+  if (head) stops.push(Math.max(0, abs(head)));
+  if (story && storyItems.length) {
+    const { total, top } = storyMetrics();
+    storyItems.forEach((_, i) => stops.push(top + (total * (i + 0.5)) / storyItems.length));
+  }
+  steps.forEach((st) => stops.push(abs(st)));
+  return stops.sort((x, y) => x - y);
+}
+const goY = (y, duration = 0.55) => {
+  if (window.lenis) window.lenis.scrollTo(y, { duration, easing: easeOut });
+  else window.scrollTo({ top: y, behavior: reduced ? 'auto' : 'smooth' });
+};
+
+// Snap to the nearest page when scrolling settles (keyboard, scrollbar drags).
 let snapTimer = null;
 function scheduleSnap() {
   if (reduced || touch || !steps.length) return;
   clearTimeout(snapTimer);
   snapTimer = setTimeout(() => {
-    if (window.lenis?.isScrolling === 'smooth' && window.lenis.isLocked) return;
     const y = window.scrollY;
-    const tops = steps.map(stepTop);
+    const tops = pageStops();
     const last = tops.length - 1;
-    if (y < tops[0] - window.innerHeight * 0.45 || y > tops[last] + 4) return;
+    if (y > tops[last] + 4) return;                     // results and footer scroll freely
     let i = 0;
     while (i < last && tops[i + 1] <= y + 1) i++;
     if (i === last) return;
     const frac = (y - tops[i]) / (tops[i + 1] - tops[i]);
     const target = dir > 0 ? (frac > 0.1 ? i + 1 : i) : (frac < 0.9 ? i : i + 1);
-    if (Math.abs(y - tops[target]) > 2) goTo(steps[target], 0.45);
+    if (Math.abs(y - tops[target]) > 2) goY(tops[target], 0.45);
   }, 60);
 }
 
@@ -156,20 +175,21 @@ if (!reduced && !touch && steps.length) {
     const newGesture = gap > 90 || delta > lastDelta * 1.6;
     lastWheel = now; lastDelta = delta;
     const y = window.scrollY;
-    const tops = steps.map(stepTop);
+    const tops = pageStops();
     const last = tops.length - 1;
-    if (y < tops[0] - 4 || y > tops[last] + 4) return;
+    if (y > tops[last] + 4) return;                     // below the last question: normal scrolling
     const down = e.deltaY > 0;
     let i = 0;
     while (i < last && tops[i + 1] <= y + 8) i++;
     const settled = Math.abs(y - tops[i]) < 8;
     if (!settled && now < wheelLock) { e.preventDefault(); e.stopImmediatePropagation(); return; }
-    if ((down && i >= last && settled) || (!down && i <= 0 && settled)) return;   // leave the form: normal scrolling
+    if (down && i >= last && settled) return;           // leave the last question: normal scrolling
+    if (!down && i <= 0 && settled) return;
     e.preventDefault(); e.stopImmediatePropagation();
     if (delta < 4 || now < wheelLock || !newGesture) return;
-    const target = down ? (settled ? i + 1 : i + 1) : (settled ? i - 1 : i);
+    const target = down ? i + 1 : (settled ? i - 1 : i);
     wheelLock = now + 650;
-    goTo(steps[Math.max(0, Math.min(last, target))], 0.55);
+    goY(tops[Math.max(0, Math.min(last, target))], 0.55);
   }, { passive: false, capture: true });
 }
 
