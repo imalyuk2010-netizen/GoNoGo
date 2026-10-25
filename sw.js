@@ -7,7 +7,7 @@ const SHELL = [
   './', 'index.html', 'style.css', 'manifest.webmanifest',
   'js/ui.js', 'js/scroll.js', 'js/pwa.js', 'js/nav.js', 'js/weather.js', 'js/airports.js', 'js/aircraft.js',
   'data/aircraft.json', 'data/airports.json',
-  'assets/logo.svg', 'assets/favicon.svg', 'assets/icon-192.png', 'assets/icon-512.png', 'assets/apple-touch-icon.png',
+  'assets/story-fuel.webp', 'assets/story-altitude.webp', 'assets/story-weather.webp', 'assets/logo.svg', 'assets/favicon.svg', 'assets/icon-192.png', 'assets/icon-512.png', 'assets/apple-touch-icon.png',
 ];
 const CDN = ['cdnjs.cloudflare.com', 'cdn.jsdelivr.net'];
 

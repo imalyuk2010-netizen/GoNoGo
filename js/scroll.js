@@ -13,6 +13,42 @@ const parallax = [...document.querySelectorAll('[data-speed]')];
 const hero = document.getElementById('top');
 const reveals = [...document.querySelectorAll('.reveal, .hero-title')];
 
+// ---------- scroll story ("What you get"): a pinned stage whose picture changes with scroll ----------
+const story = document.getElementById('story');
+const storyItems = story ? [...story.querySelectorAll('.story-item')] : [];
+const storyFigs = story ? [...story.querySelectorAll('.story-fig')] : [];
+const storyStage = document.getElementById('storyStage');
+const storyBar = document.getElementById('storyBar');
+let storyIdx = 0;
+function storyMetrics() {
+  const bar = document.querySelector('.topbar');
+  const offset = bar ? bar.offsetHeight : 71;
+  const total = story.offsetHeight - story.firstElementChild.offsetHeight;
+  return { total, top: story.getBoundingClientRect().top + window.scrollY - offset };
+}
+function updateStory() {
+  if (!story || !storyItems.length) return;
+  const { total, top } = storyMetrics();
+  const p = Math.min(1, Math.max(0, (window.scrollY - top) / Math.max(1, total)));
+  const n = storyItems.length;
+  const seg = Math.min(n - 0.0001, p * n);
+  const idx = Math.floor(seg);
+  storyStage.style.setProperty('--sp', (seg - idx).toFixed(3));
+  if (storyBar) storyBar.style.transform = `scaleX(${p.toFixed(3)})`;
+  if (idx !== storyIdx) {
+    storyIdx = idx;
+    storyItems.forEach((e, i) => e.classList.toggle('on', i === idx));
+    storyFigs.forEach((e, i) => e.classList.toggle('on', i === idx));
+  }
+}
+storyItems.forEach((it, i) => it.addEventListener('click', () => {
+  const { total, top } = storyMetrics();
+  const y = top + total * ((i + 0.5) / storyItems.length);
+  if (window.lenis) window.lenis.scrollTo(y, { duration: 1 });
+  else window.scrollTo({ top: y, behavior: reduced ? 'auto' : 'smooth' });
+}));
+window.addEventListener('resize', updateStory);
+
 // ---------- reveals ----------
 if (reduced || !('IntersectionObserver' in window)) {
   reveals.forEach((n) => n.classList.add('in'));
@@ -27,6 +63,7 @@ if (reduced || !('IntersectionObserver' in window)) {
 
 // ---------- scroll-linked effects ----------
 function onScroll(y) {
+  updateStory();
   const max = root.scrollHeight - window.innerHeight;
   if (bar) bar.style.transform = `scaleX(${max > 0 ? Math.min(1, y / max) : 0})`;
   if (reduced || !hero) return;

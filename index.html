@@ -87,22 +87,65 @@
     <p class="eyebrow reveal">What you get</p>
     <h2 class="how-title reveal">Every number on the nav log, with the formula beside it.</h2>
   </div>
-  <div class="how-grid">
-    <article class="how-card reveal" style="--d:0s">
-      <span class="how-num">01</span>
-      <h3>Wind triangle</h3>
-      <p>True course, wind correction angle, heading and ground speed from a forecast at the route midpoint — or winds you enter yourself.</p>
-    </article>
-    <article class="how-card reveal" style="--d:.1s">
-      <span class="how-num">02</span>
-      <h3>Fuel &amp; reserves</h3>
-      <p>Trip fuel plus 14 CFR 91.151 / 91.167 reserves, and a plain GO, TIGHT or NO-GO verdict against fuel on board.</p>
-    </article>
-    <article class="how-card reveal" style="--d:.2s">
-      <span class="how-num">03</span>
-      <h3>Weather &amp; alternates</h3>
-      <p>Decoded METAR and TAF for both airports, a VFR cruising-altitude check, and alternates within 25 NM of your route.</p>
-    </article>
+
+  <!-- Scroll story: the left list and the pinned picture on the right change as you scroll -->
+  <div class="story" id="story" style="--n:3">
+    <div class="story-stick">
+      <ol class="story-list">
+        <li class="story-item on" data-i="0">
+          <span class="how-num">01</span>
+          <h3>Wind triangle</h3>
+          <p>True course, wind correction angle, heading and ground speed from a forecast at the route midpoint — or winds you enter yourself.</p>
+        </li>
+        <li class="story-item" data-i="1">
+          <span class="how-num">02</span>
+          <h3>Fuel &amp; reserves</h3>
+          <p>Trip fuel plus the 14 CFR 91.151 reserve, and a plain GO, TIGHT or NO-GO verdict against the fuel on board.</p>
+        </li>
+        <li class="story-item" data-i="2">
+          <span class="how-num">03</span>
+          <h3>Weather &amp; alternates</h3>
+          <p>Decoded METAR and TAF for both airports, a VFR cruising-altitude check, and alternates within 25 NM of your route.</p>
+        </li>
+      </ol>
+
+      <div class="story-stage" id="storyStage">
+        <figure class="story-fig on" data-i="0">
+          <div class="wind-card">
+            <svg class="wind-svg" viewBox="0 88 400 160" role="img" aria-label="Wind triangle diagram: true heading 080 degrees, wind from 045 at 30 knots, resulting ground track 090 at 96.9 knots ground speed">
+              <defs>
+                <marker id="ah-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#56ccf2"/></marker>
+                <marker id="ah-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#fbbf24"/></marker>
+                <marker id="ah-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#4ade80"/></marker>
+              </defs>
+              <!-- north tick -->
+              <g class="w-north" transform="translate(0 66)"><path d="M34 70 L34 36" stroke="#6f86a8" stroke-width="1.5"/><path d="M29 42 L34 33 L39 42" fill="none" stroke="#6f86a8" stroke-width="1.5"/><text x="34" y="26" text-anchor="middle" fill="#8ea3c4" font-size="11" font-weight="700">N</text></g>
+              <!-- 1) heading + TAS -->
+              <path class="w-line w-1" d="M60 200 L284 159.5" stroke="#56ccf2" stroke-width="3.2" fill="none" marker-end="url(#ah-blue)"/>
+              <text class="w-lab w-1" x="150" y="161" fill="#8fd6f5" font-size="13" font-weight="700" transform="rotate(-10.2 150 161)">Heading 080° · TAS 120 kt</text>
+              <!-- 2) wind -->
+              <path class="w-line w-2" d="M284 159.5 L243.7 199.8" stroke="#fbbf24" stroke-width="3.2" fill="none" marker-end="url(#ah-amber)"/>
+              <text class="w-lab w-2" x="272" y="198" fill="#fcd34d" font-size="13" font-weight="700">Wind 045° · 30 kt</text>
+              <!-- 3) ground track -->
+              <path class="w-line w-3" d="M60 200 L244 200" stroke="#4ade80" stroke-width="3.2" stroke-dasharray="1 0" fill="none" marker-end="url(#ah-green)"/>
+              <text class="w-lab w-3" x="82" y="226" fill="#86efac" font-size="13" font-weight="700">Track 090° · Ground speed 96.9 kt</text>
+              <!-- WCA arc -->
+              <path class="w-lab w-4" d="M118 200 A58 58 0 0 0 117.2 189.9" stroke="#fff" stroke-width="2" fill="none"/>
+              <text class="w-lab w-4" x="128" y="190" fill="#fff" font-size="13" font-weight="800">WCA −10.2°</text>
+            </svg>
+            <p class="wind-cap">Textbook example: course 090°, wind 045° at 30 kt. Crab 10° left to hold the track.</p>
+          </div>
+        </figure>
+        <figure class="story-fig" data-i="1">
+          <img class="shot shot-a" src="assets/story-fuel.webp" width="570" height="267" alt="GoNoGo fuel and reserves card showing a GO verdict: trip fuel, legal reserve, required total and margin" loading="lazy" decoding="async">
+          <img class="shot shot-b" src="assets/story-altitude.webp" width="570" height="267" alt="GoNoGo VFR cruising altitude check against 14 CFR 91.159" loading="lazy" decoding="async">
+        </figure>
+        <figure class="story-fig" data-i="2">
+          <img class="shot shot-c" src="assets/story-weather.webp" width="570" height="596" alt="GoNoGo weather card for KSMF with decoded METAR and TAF" loading="lazy" decoding="async">
+        </figure>
+      </div>
+      <div class="story-progress" aria-hidden="true"><i id="storyBar"></i></div>
+    </div>
   </div>
 </section>
 
