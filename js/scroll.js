@@ -88,8 +88,10 @@ window.addEventListener('resize', setTopVar);
 const steps = [...document.querySelectorAll('.step')];
 const dotsEl = document.getElementById('stepDots');
 const stepTop = (el) => el.getBoundingClientRect().top + window.scrollY - topH();
-const easeOut = (t) => 1 - Math.pow(1 - t, 4);
-const goTo = (el, duration = 0.6) => {
+// One timing for every page change: a gentle start and a soft landing.
+const PAGE_SECONDS = 1.1;
+const easeOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const goTo = (el, duration = PAGE_SECONDS) => {
   if (!el) return;
   if (window.lenis) window.lenis.scrollTo(el, { offset: -topH(), duration, easing: easeOut });
   else el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
@@ -101,7 +103,7 @@ steps.forEach((st, i) => {
   const d = document.createElement('button');
   d.type = 'button'; d.className = 'step-dot'; d.setAttribute('aria-label', `${st.dataset.label} (step ${i + 1})`);
   d.innerHTML = `<span>${st.dataset.label}</span>`;
-  d.addEventListener('click', () => goTo(st, 0.7));
+  d.addEventListener('click', () => goTo(st));
   dotsEl?.appendChild(d);
 });
 const dots = dotsEl ? [...dotsEl.children] : [];
@@ -138,7 +140,7 @@ function pageStops() {
   steps.forEach((st) => stops.push(abs(st)));
   return stops.sort((x, y) => x - y);
 }
-const goY = (y, duration = 0.55) => {
+const goY = (y, duration = PAGE_SECONDS) => {
   if (window.lenis) window.lenis.scrollTo(y, { duration, easing: easeOut });
   else window.scrollTo({ top: y, behavior: reduced ? 'auto' : 'smooth' });
 };
@@ -158,7 +160,7 @@ function scheduleSnap() {
     if (i === last) return;
     const frac = (y - tops[i]) / (tops[i + 1] - tops[i]);
     const target = dir > 0 ? (frac > 0.1 ? i + 1 : i) : (frac < 0.9 ? i : i + 1);
-    if (Math.abs(y - tops[target]) > 2) goY(tops[target], 0.45);
+    if (Math.abs(y - tops[target]) > 2) goY(tops[target], 0.8);
   }, 60);
 }
 
@@ -188,8 +190,8 @@ if (!reduced && !touch && steps.length) {
     e.preventDefault(); e.stopImmediatePropagation();
     if (delta < 4 || now < wheelLock || !newGesture) return;
     const target = down ? i + 1 : (settled ? i - 1 : i);
-    wheelLock = now + 650;
-    goY(tops[Math.max(0, Math.min(last, target))], 0.55);
+    wheelLock = now + PAGE_SECONDS * 1000 + 150;
+    goY(tops[Math.max(0, Math.min(last, target))]);
   }, { passive: false, capture: true });
 }
 
