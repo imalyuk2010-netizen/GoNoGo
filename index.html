@@ -20,8 +20,6 @@
 </head>
 <body>
 
-<div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
-
 <header class="topbar">
   <a class="brand" href="#top" data-scroll-to="#top" aria-label="GoNoGo — back to top">
     <svg class="brand-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true">
@@ -93,17 +91,14 @@
     <div class="story-stick">
       <ol class="story-list">
         <li class="story-item on" data-i="0">
-          <span class="how-num">01</span>
           <h3>Wind triangle</h3>
           <p>True course, wind correction angle, heading and ground speed from a forecast at the route midpoint — or winds you enter yourself.</p>
         </li>
         <li class="story-item" data-i="1">
-          <span class="how-num">02</span>
           <h3>Fuel &amp; reserves</h3>
           <p>Trip fuel plus the 14 CFR 91.151 reserve, and a plain GO, TIGHT or NO-GO verdict against the fuel on board.</p>
         </li>
         <li class="story-item" data-i="2">
-          <span class="how-num">03</span>
           <h3>Weather &amp; alternates</h3>
           <p>Decoded METAR and TAF for both airports, a VFR cruising-altitude check, and alternates within 25 NM of your route.</p>
         </li>
@@ -131,7 +126,7 @@
               <text class="w-lab w-3" x="82" y="226" fill="#86efac" font-size="13" font-weight="700">Track 090° · Ground speed 96.9 kt</text>
               <!-- WCA arc -->
               <path class="w-lab w-4" d="M118 200 A58 58 0 0 0 117.2 189.9" stroke="#fff" stroke-width="2" fill="none"/>
-              <text class="w-lab w-4" x="128" y="190" fill="#fff" font-size="13" font-weight="800">WCA −10.2°</text>
+              <text class="w-lab w-4" x="128" y="190" fill="#fff" font-size="13" font-weight="700">WCA −10.2°</text>
             </svg>
             <p class="wind-cap">Textbook example: course 090°, wind 045° at 30 kt. Crab 10° left to hold the track.</p>
           </div>
@@ -144,7 +139,6 @@
           <img class="shot shot-c" src="assets/story-weather.webp" width="570" height="596" alt="GoNoGo weather card for KSMF with decoded METAR and TAF" loading="lazy" decoding="async">
         </figure>
       </div>
-      <div class="story-progress" aria-hidden="true"><i id="storyBar"></i></div>
     </div>
   </div>
 </section>
@@ -173,7 +167,6 @@
 
   <section class="step" id="planner" data-label="Departure">
     <div class="step-inner">
-      <p class="step-count"></p>
       <h2 class="step-q">Where are you departing from?</h2>
       <div class="field autocomplete">
         <label for="dep" class="sr-only">Departure</label>
@@ -186,7 +179,6 @@
 
   <section class="step" data-label="Destination">
     <div class="step-inner">
-      <p class="step-count"></p>
       <h2 class="step-q">Where are you headed?</h2>
       <div class="field autocomplete">
         <label for="dest" class="sr-only">Destination</label>
@@ -200,7 +192,6 @@
 
   <section class="step" data-label="Aircraft">
     <div class="step-inner">
-      <p class="step-count"></p>
       <h2 class="step-q">What are you flying?</h2>
       <div class="field">
         <label for="aircraft" class="sr-only">Aircraft type</label>
@@ -218,7 +209,6 @@
 
   <section class="step" data-label="Fuel">
     <div class="step-inner">
-      <p class="step-count"></p>
       <h2 class="step-q">How much fuel is on board?</h2>
       <div class="field">
         <label for="fuelOnBoard">Usable fuel on board (gal)</label>
@@ -230,7 +220,6 @@
 
   <section class="step" data-label="Altitude">
     <div class="step-inner">
-      <p class="step-count"></p>
       <h2 class="step-q">How high will you cruise?</h2>
       <div class="field">
         <label for="altitude">Planned cruise altitude (ft MSL)</label>
@@ -242,7 +231,6 @@
 
   <section class="step" data-label="Time of day">
     <div class="step-inner">
-      <p class="step-count"></p>
       <h2 class="step-q">Day or night?</h2>
       <fieldset class="field seg" id="dayNight">
         <legend class="sr-only">Time of day</legend>
@@ -255,7 +243,6 @@
 
   <section class="step" data-label="Fuel price">
     <div class="step-inner">
-      <p class="step-count"></p>
       <h2 class="step-q">What is fuel costing you?</h2>
       <div class="field">
         <label for="fuelPrice">Fuel price ($ per gallon)</label>
@@ -266,7 +253,6 @@
 
   <section class="step" data-label="Winds aloft">
     <div class="step-inner">
-      <p class="step-count"></p>
       <h2 class="step-q">Where do the winds come from?</h2>
       <fieldset class="field seg" id="windSource">
         <legend class="sr-only">Wind source</legend>
@@ -283,7 +269,6 @@
 
   <section class="step step-last" data-label="Plan">
     <div class="step-inner">
-      <p class="step-count"></p>
       <h2 class="step-q">Ready for takeoff?</h2>
       <button type="submit" class="btn-primary" id="planBtn" disabled>Plan flight</button>
       <div id="formError" class="alert alert-error" role="alert" hidden></div>

@@ -8,7 +8,6 @@ const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const touch = window.matchMedia('(pointer: coarse)').matches;
 document.documentElement.classList.toggle('is-touch', touch);
 const root = document.documentElement;
-const bar = document.getElementById('scrollProgress');
 const parallax = [...document.querySelectorAll('[data-speed]')];
 const hero = document.getElementById('top');
 const reveals = [...document.querySelectorAll('.reveal, .hero-title')];
@@ -18,7 +17,6 @@ const story = document.getElementById('story');
 const storyItems = story ? [...story.querySelectorAll('.story-item')] : [];
 const storyFigs = story ? [...story.querySelectorAll('.story-fig')] : [];
 const storyStage = document.getElementById('storyStage');
-const storyBar = document.getElementById('storyBar');
 let storyIdx = 0;
 function storyMetrics() {
   const bar = document.querySelector('.topbar');
@@ -33,8 +31,6 @@ function updateStory() {
   const n = storyItems.length;
   const seg = Math.min(n - 0.0001, p * n);
   const idx = Math.floor(seg);
-  storyStage.style.setProperty('--sp', (seg - idx).toFixed(3));
-  if (storyBar) storyBar.style.transform = `scaleX(${p.toFixed(3)})`;
   if (idx !== storyIdx) {
     storyIdx = idx;
     storyItems.forEach((e, i) => e.classList.toggle('on', i === idx));
@@ -64,8 +60,6 @@ if (reduced || !('IntersectionObserver' in window)) {
 // ---------- scroll-linked effects ----------
 function onScroll(y) {
   updateStory();
-  const max = root.scrollHeight - window.innerHeight;
-  if (bar) bar.style.transform = `scaleX(${max > 0 ? Math.min(1, y / max) : 0})`;
   if (reduced || !hero) return;
   const h = hero.offsetHeight;
   if (y > h * 1.2) return;
@@ -102,8 +96,6 @@ const goTo = (el, duration = 0.6) => {
 };
 
 steps.forEach((st, i) => {
-  const c = st.querySelector('.step-count');
-  if (c) c.textContent = `${String(i + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')} — ${st.dataset.label}`;
   const input = st.querySelector('input:not([type=radio]), select');
   if (input && input.id) input.dataset.step = String(i);
   const d = document.createElement('button');
