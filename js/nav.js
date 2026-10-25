@@ -197,6 +197,55 @@ export function fuelVerdict({ tripGal, reserveGal, usableGal, gph }) {
 }
 
 /**
+ * Multi-leg (layover) plan.
+ *   route          [{ lat, lon, ident }, …]  departure, any layovers, destination (≥ 2 points)
+ *   winds[i]       { dir, speed } used for leg i (wind FROM, degrees true / knots)
+ *   stops[j]       the layover at route[j + 1]: { refuel: boolean, minutes: number }
+ *   startFuelGal   usable fuel on board at departure
+ *   usableGal      the aircraft's full usable fuel (what "refuel to full" tops up to)
+ * Every leg is checked on its own: fuel at takeoff must cover that leg's trip fuel PLUS the legal reserve.
+ * After a layover the next leg starts with full tanks (refuel) or with whatever was left (no refuel).
+ * Returns { ok: true, legs, totals, overall, worstIndex } or { ok: false, legIndex, error }.
+ */
+const SEVERITY = { GO: 0, TIGHT: 1, 'NO-GO': 2 };
+export function planRoute({ route, tas, winds, burnGph, usableGal, startFuelGal, dayNight, stops = [] }) {
+  if (!Array.isArray(route) || route.length < 2) return { ok: false, legIndex: 0, error: 'A route needs at least a departure and a destination.' };
+  const legs = [];
+  let fuelAtTakeoff = startFuelGal;
+  for (let i = 0; i < route.length - 1; i++) {
+    const from = route[i];
+    const to = route[i + 1];
+    const distanceNM = haversineNM(from.lat, from.lon, to.lat, to.lon);
+    const trueCourse = initialBearing(from.lat, from.lon, to.lat, to.lon);
+    const wind = winds[i] || { dir: 0, speed: 0 };
+    const wt = windTriangle({ trueCourse, tas, windDir: wind.dir, windSpeed: wind.speed });
+    if (!wt.ok) return { ok: false, legIndex: i, error: wt.error };
+    const hours = timeEnrouteHours(distanceNM, wt.groundSpeed);
+    const tripGal = tripFuelGal(hours, burnGph);
+    const reserveGal = reserveFuelGal(dayNight, burnGph);
+    const v = fuelVerdict({ tripGal, reserveGal, usableGal: fuelAtTakeoff, gph: burnGph });
+    legs.push({
+      from, to, distanceNM, trueCourse, wind, wt, hours, tripGal, reserveGal,
+      fuelAtTakeoff, fuelAtLanding: fuelAtTakeoff - tripGal,
+      verdict: v.verdict, requiredGal: v.requiredGal, marginGal: v.marginGal, marginMin: v.marginMin,
+    });
+    if (i < route.length - 2) fuelAtTakeoff = stops[i]?.refuel ? usableGal : fuelAtTakeoff - tripGal;
+  }
+  let worstIndex = 0;
+  legs.forEach((l, i) => {
+    const w = legs[worstIndex];
+    if (SEVERITY[l.verdict] > SEVERITY[w.verdict] || (SEVERITY[l.verdict] === SEVERITY[w.verdict] && l.marginMin < w.marginMin)) worstIndex = i;
+  });
+  const totals = {
+    distanceNM: legs.reduce((s, l) => s + l.distanceNM, 0),
+    flightHours: legs.reduce((s, l) => s + l.hours, 0),
+    groundMinutes: stops.slice(0, route.length - 2).reduce((s, st) => s + (st?.minutes || 0), 0),
+    tripGal: legs.reduce((s, l) => s + l.tripGal, 0),
+  };
+  return { ok: true, legs, totals, overall: legs[worstIndex].verdict, worstIndex };
+}
+
+/**
  * VFR cruising altitude check, 14 CFR 91.159.
  * Applies above 3,000 ft AGL and below 18,000 ft MSL:
  *   magnetic course   0–179 → odd  thousands + 500 (3,500, 5,500, 7,500 …)

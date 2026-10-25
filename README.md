@@ -24,6 +24,7 @@ Enter a departure, a destination, an aircraft, an altitude, and fuel on board. G
 | **Fuel cost** | trip fuel × price per gallon (default $6.50, editable) |
 | **Winds aloft** | Open-Meteo forecast at the route midpoint, at the pressure level nearest your altitude (925 hPa ≈ 2,500 ft, 850 ≈ 5,000, 700 ≈ 10,000, 600 ≈ 14,000). Or enter winds manually from an FB forecast. |
 | **Weather** | Current METAR and TAF for both airports — raw text plus a plain-English decode, from NOAA Aviation Weather Center |
+| **Layovers** | Add up to 3 stops between departure and destination. Each leg gets its own wind triangle (forecast at that leg's midpoint), time, fuel and GO / TIGHT / NO-GO verdict, plus a ground-time total. Choose per stop: refuel to full, or carry on with what's left. The overall verdict is the tightest leg. For a TIGHT / NO-GO leg the alert suggests nearby airports (long runway, near the route, in range) as fuel stops — the airport data does **not** say whether fuel is sold there, so the app tells the pilot to confirm it. |
 | **Alternates** | Airports within 25 NM of the route with a runway ≥ 2,500 ft, nearest to the destination first (top 5), with current METARs for the top 3 |
 | **Map** | Leaflet + OpenStreetMap, great-circle route drawn, departure/destination/alternates marked |
 
@@ -106,6 +107,7 @@ Aircraft figures in `data/aircraft.json` are approximate planning values compile
 
 - NOAA returns **HTTP 204 with an empty body** for an unknown station; the app treats that as "not a reporting station."
 - NOAA sends no CORS headers, so the browser calls the same-origin `/api/wx` proxy first and only falls back to a direct request if the proxy is unavailable.
+- Layover time on the ground is only added to the trip totals; fuel burned while parked is not modeled (the 1.2 gal taxi/run-up allowance is applied to every leg).
 - This is a VFR-only planner: IFR rules (91.167 reserves, IFR altitudes, alternate requirements) are intentionally not modeled.
 
 ## Deploying (GitHub + Vercel)

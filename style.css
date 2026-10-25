@@ -543,3 +543,40 @@ html.is-touch .footer { scroll-snap-align: end; }
 }
 
 .data-status.ok { display: none; }
+
+/* ---------- layovers ---------- */
+.stop-list { display: grid; gap: 26px; margin-bottom: 18px; }
+.stop-row { display: grid; gap: 10px; padding-bottom: 22px; border-bottom: 1px solid var(--border); }
+.stop-row .field { margin-bottom: 0; }
+.stop-opts { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; }
+.stop-opts label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.step .stop-opts select {
+  width: auto; min-width: 150px; font-size: 17px; font-weight: 600; letter-spacing: 0; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text);
+}
+.stop-remove { padding: 10px 14px; font-size: 14px; font-weight: 600; color: var(--nogo); background: var(--nogo-soft); border: 0; border-radius: 10px; }
+#addStopBtn[hidden] + .hint { margin-top: 0; }
+#addStopBtn { padding: 12px 20px; font-size: 16px; }
+
+#legsCard { margin-top: 12px; }
+.legs-table td, .legs-table th { white-space: nowrap; }
+.legs-table .layover-row td { padding: 6px 8px; font-size: 13px; color: var(--text-muted); background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: normal; }
+.legs-table .verdict { font-size: 12px; padding: 2px 10px; }
+
+.va-options { max-width: 760px; width: 100%; display: grid; gap: 10px; justify-items: center; }
+.va-options[hidden] { display: none; }
+.va-options p { font-size: 16px; font-weight: 700; margin: 0; }
+.va-options small { display: block; font-size: 13px; font-weight: 600; opacity: .85; }
+.va-opt-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.va-opt { padding: 12px 16px; border-radius: 14px; font-size: 15px; font-weight: 700; text-align: left; color: inherit; background: rgba(0, 0, 0, .2); border: 2px solid rgba(var(--va-edge), .45); line-height: 1.25; }
+.va-opt:hover { background: rgba(0, 0, 0, .32); }
+.va-tight .va-opt { background: rgba(255, 255, 255, .4); }
+.va-opt:focus-visible { outline: 4px solid rgba(var(--va-edge), .9); outline-offset: 3px; }
+
+.legs-table th, .legs-table td { padding: 8px 6px; font-size: 13.5px; }
+.legs-table .num { text-align: right; }
+@media (max-width: 520px) {
+  .legs-table th:nth-child(3), .legs-table td:nth-child(3),
+  .legs-table th:nth-child(4), .legs-table td:nth-child(4),
+  .legs-table th:nth-child(6), .legs-table td:nth-child(6) { display: none; }
+}

@@ -3,9 +3,11 @@
 import {
   haversineNM, initialBearing, midpoint, greatCirclePath, tasAtAltitude, windTriangle,
   timeEnrouteHours, tripFuelGal, reserveMinutes, reserveFuelGal, fuelVerdict, vfrAltitudeCheck,
-  formatHours, formatDeg, TAXI_RUNUP_GAL,
+  formatHours, formatDeg, TAXI_RUNUP_GAL, planRoute,
 } from './nav.js';
-import { loadAirports, searchAirports, getAirport, findAlternates, describeAirport } from './airports.js';
+import {
+  loadAirports, searchAirports, getAirport, findAlternates, findAlternatesAlongRoute, findLayoverOptions, describeAirport,
+} from './airports.js';
 import { loadAircraft, resolveAircraft, getAircraftById, CUSTOM_ID } from './aircraft.js';
 import { getMetar, getTaf, getMetars, getWindsAloft } from './weather.js';
 
@@ -27,6 +29,7 @@ const el = {
   map: $('map'), results: $('results'), mapFallback: $('mapFallback'), emptyState: $('emptyState'), planOutput: $('planOutput'),
   planNotice: $('planNotice'), cards: $('cards'), fuelVerdict: $('fuelVerdict'), altitudeCheck: $('altitudeCheck'),
   windInfo: $('windInfo'), weather: $('weather'), alternates: $('alternates'),
+  stopList: $('stopList'), addStopBtn: $('addStopBtn'), stopHint: $('stopHint'), legsCard: $('legsCard'),
 };
 
 const state = { dep: null, dest: null, planId: 0 };
@@ -62,7 +65,7 @@ function initMap() {
 }
 
 function labelMarker(a, kind) {
-  const color = kind === 'dep' ? '#15803d' : kind === 'dest' ? '#b91c1c' : '#0f5fbf';
+  const color = kind === 'dep' ? '#15803d' : kind === 'dest' ? '#b91c1c' : kind === 'stop' ? '#7c3aed' : '#0f5fbf';
   const m = L.circleMarker([a.lat, a.lon], {
     radius: kind === 'alt' ? 6 : 8, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1,
   });
@@ -71,15 +74,19 @@ function labelMarker(a, kind) {
   return m;
 }
 
-function drawRoute(dep, dest, alternates) {
+function drawRoute(route, alternates) {
   if (!map) return;
   routeLayer.clearLayers();
-  const path = greatCirclePath(dep.lat, dep.lon, dest.lat, dest.lon, 96);
-  L.polyline(path, { color: '#0f5fbf', weight: 3, opacity: 0.9 }).addTo(routeLayer);
+  const all = [];
+  for (let i = 0; i < route.length - 1; i++) {
+    const a = route[i], b = route[i + 1];
+    const path = greatCirclePath(a.lat, a.lon, b.lat, b.lon, 96);
+    all.push(...path);
+    L.polyline(path, { color: '#0f5fbf', weight: 3, opacity: 0.9 }).addTo(routeLayer);
+  }
   alternates.forEach((a) => labelMarker(a, 'alt').addTo(routeLayer));
-  labelMarker(dep, 'dep').addTo(routeLayer);
-  labelMarker(dest, 'dest').addTo(routeLayer);
-  map.fitBounds(L.latLngBounds(path), { padding: [40, 40] });
+  route.forEach((a, i) => labelMarker(a, i === 0 ? 'dep' : i === route.length - 1 ? 'dest' : 'stop').addTo(routeLayer));
+  map.fitBounds(L.latLngBounds(all), { padding: [40, 40] });
 }
 
 // ---------- autocomplete ----------
@@ -183,6 +190,16 @@ function readForm() {
   if (!dest) errors.push('Choose a destination airport from the list.');
   if (dep && dest && dep.ident === dest.ident) errors.push('Departure and destination are the same airport.');
 
+  // Layovers: empty rows are ignored; filled rows must be real, distinct airports.
+  const stops = [];
+  readStopsLoose().forEach((st, i) => {
+    if (!st.ap && !st.text) return;
+    if (!st.ap) { errors.push(`Choose layover ${i + 1} from the list.`); return; }
+    if ((dep && st.ap.ident === dep.ident) || (dest && st.ap.ident === dest.ident)) errors.push(`Layover ${i + 1} (${st.ap.ident}) is the same as your departure or destination.`);
+    else if (stops.some((x) => x.ap.ident === st.ap.ident)) errors.push(`${st.ap.ident} is listed twice as a layover.`);
+    stops.push(st);
+  });
+
   let aircraft = null;
   try {
     aircraft = resolveAircraft(el.aircraft.value, { ktas: el.customKtas.value, gph: el.customGph.value, usable: el.customUsable.value });
@@ -212,7 +229,7 @@ function readForm() {
     manualWind = { dir, speed: spd };
   }
 
-  return { errors, dep, dest, aircraft, fuelOnBoard, altitude, fuelPrice, dayNight, windSource, manualWind };
+  return { errors, dep, dest, aircraft, fuelOnBoard, altitude, fuelPrice, dayNight, windSource, manualWind, stops };
 }
 
 // ---------- rendering ----------
@@ -245,7 +262,10 @@ function renderPlan(p, wind, wt) {
 
   // Fuel verdict
   const v = verdict.verdict;
-  showVerdictAlert(v, { verdict, trip, reserve, fuelOnBoard, dep, dest });
+  showVerdictAlert(v, {
+    verdict, trip, reserve, fuelOnBoard, dep, dest,
+    options: v === 'GO' ? [] : fuelStopOptions([dep, dest], 0, p, fuelOnBoard), insertAt: 0,
+  });
   el.fuelVerdict.className = `card v-${v}`;
   el.fuelVerdict.innerHTML =
     `<h3>Fuel &amp; reserves <span class="verdict ${v}">${v}</span></h3>` +
@@ -411,19 +431,34 @@ function showVerdictAlert(v, d) {
   const { verdict, trip, reserve, fuelOnBoard, dep, dest } = d;
   const nogo = v === 'NO-GO';
   va.root.className = `verdict-alert ${nogo ? 'va-nogo' : v === 'TIGHT' ? 'va-tight' : 'va-go'}`;
-  va.route.textContent = `${dep.ident} → ${dest.ident}`;
+  va.route.textContent = d.routeLabel || `${dep.ident} → ${dest.ident}`;
   va.title.textContent = v;
+  const lead = d.legLabel ? `${d.legLabel}: ` : '';
   va.text.textContent = nogo
-    ? `You do not have enough fuel for this flight. Short by ${fmt(Math.abs(verdict.marginGal), 1)} gal (${fmt(Math.abs(verdict.marginMin))} min) once the legal reserve is included.`
+    ? `${lead}You do not have enough fuel for this ${d.legLabel ? 'leg' : 'flight'}. Short by ${fmt(Math.abs(verdict.marginGal), 1)} gal (${fmt(Math.abs(verdict.marginMin))} min) once the legal reserve is included.`
     : v === 'TIGHT'
-      ? `Legal, but only ${fmt(verdict.marginMin)} minutes of extra fuel (${fmt(verdict.marginGal, 1)} gal) beyond the legal reserve. A headwind or a diversion could use it up.`
-      : `You have enough fuel, with ${fmt(verdict.marginMin)} minutes (${fmt(verdict.marginGal, 1)} gal) to spare beyond the legal reserve. Still check weather and NOTAMs before you fly.`;
+      ? `${lead}Legal, but only ${fmt(verdict.marginMin)} minutes of extra fuel (${fmt(verdict.marginGal, 1)} gal) beyond the legal reserve. A headwind or a diversion could use it up.`
+      : d.legLabel
+        ? `Every leg has enough fuel. The tightest, ${d.legLabel}, still has ${fmt(verdict.marginMin)} minutes (${fmt(verdict.marginGal, 1)} gal) to spare beyond the legal reserve. Still check weather and NOTAMs before you fly.`
+        : `You have enough fuel, with ${fmt(verdict.marginMin)} minutes (${fmt(verdict.marginGal, 1)} gal) to spare beyond the legal reserve. Still check weather and NOTAMs before you fly.`;
   va.change.hidden = v === 'GO';
   va.stats.innerHTML =
     `<div><dt>Trip fuel</dt><dd>${fmt(trip, 1)} gal</dd></div>` +
     `<div><dt>Legal reserve</dt><dd>${fmt(reserve, 1)} gal</dd></div>` +
     `<div><dt>Required</dt><dd>${fmt(verdict.requiredGal, 1)} gal</dd></div>` +
     `<div><dt>On board</dt><dd>${fmt(fuelOnBoard, 1)} gal</dd></div>`;
+  const optBox = $('vaOptions');
+  va.pending = null;
+  if (d.options?.length) {
+    va.pending = { options: d.options, insertAt: d.insertAt || 0 };
+    optBox.innerHTML = '<p>Add a fuel stop?</p><div class="va-opt-list">' +
+      d.options.map((o, i) => `<button type="button" class="va-opt" data-i="${i}">${esc(o.ident)} · ${esc(o.name)}<small>${esc(o.municipality || '')} · +${fmt(o.detourNM)} NM detour · runway ${fmt(o.runway_length_ft)} ft</small></button>`).join('') +
+      '</div><small>The airport data does not say whether fuel is sold there. Confirm fuel and hours in the Chart Supplement or with the airport before relying on a stop.</small>';
+    optBox.hidden = false;
+  } else {
+    optBox.hidden = true;
+    optBox.innerHTML = '';
+  }
   if (va.root.hidden) vaReturnFocus = document.activeElement;
   va.root.hidden = false;
   document.body.classList.add('va-open');
@@ -440,6 +475,16 @@ va.sound.addEventListener('click', () => {
   renderSoundToggle();
 });
 va.review.addEventListener('click', closeVerdictAlert);
+$('vaOptions').addEventListener('click', (e) => {
+  const btn = e.target.closest('.va-opt');
+  if (!btn || !va.pending) return;
+  const o = va.pending.options[Number(btn.dataset.i)];
+  const rows = readStopsLoose();
+  rows.splice(va.pending.insertAt, 0, { ap: o, text: o.ident, minutes: 45, refuel: true });
+  renderStopRows(rows);
+  closeVerdictAlert();
+  plan({ preventDefault() {} });
+});
 va.change.addEventListener('click', () => {
   closeVerdictAlert();
   const step = $('fuelOnBoard')?.closest('.step');
@@ -450,12 +495,233 @@ document.addEventListener('keydown', (e) => {
   if (va.root.hidden) return;
   if (e.key === 'Escape') { e.preventDefault(); closeVerdictAlert(); }
   else if (e.key === 'Tab') {
-    const f = [va.review, va.change, va.sound].filter((b) => !b.hidden);
+    const f = [va.review, ...$('vaOptions').querySelectorAll('button'), va.change, va.sound].filter((b) => !b.hidden);
     const i = f.indexOf(document.activeElement);
     e.preventDefault();
     f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
   }
 });
+
+// ---------- layovers ----------
+const MAX_STOPS = 3;
+const STOP_HINT = el.stopHint.textContent;
+
+function readStopsLoose() {
+  return [...el.stopList.querySelectorAll('.stop-row')].map((row, i) => ({
+    ap: state[`s${i}`] || getAirport($(`stop${i}`).value),
+    text: $(`stop${i}`).value.trim(),
+    minutes: Number($(`stop${i}Min`).value),
+    refuel: $(`stop${i}Refuel`).value === 'full',
+  }));
+}
+
+function renderStopRows(data) {
+  el.stopList.innerHTML = '';
+  for (let i = 0; i < MAX_STOPS; i++) state[`s${i}`] = null;
+  const stepIdx = String([...document.querySelectorAll('.step')].indexOf(el.stopList.closest('.step')));
+  data.forEach((d, i) => {
+    const row = document.createElement('div');
+    row.className = 'stop-row';
+    row.innerHTML =
+      `<div class="field autocomplete"><label class="sr-only" for="stop${i}">Layover ${i + 1}</label>` +
+      `<input id="stop${i}" type="text" placeholder="Layover ${i + 1} — e.g. KBFL" spellcheck="false" autocapitalize="characters" autocorrect="off" enterkeyhint="next" aria-autocomplete="list" aria-controls="stop${i}List" aria-expanded="false">` +
+      `<ul class="suggestions" id="stop${i}List" role="listbox" data-lenis-prevent hidden></ul>` +
+      `<div class="hint" id="stop${i}Hint">Layover ${i + 1}: type an ICAO code, airport name, or city</div></div>` +
+      `<div class="stop-opts">` +
+      `<label>On the ground<select id="stop${i}Min"><option value="30">30 min</option><option value="45">45 min</option><option value="60">1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option></select></label>` +
+      `<label>Fuel<select id="stop${i}Refuel"><option value="full">Refuel to full</option><option value="none">Don't refuel</option></select></label>` +
+      `<button type="button" class="stop-remove" aria-label="Remove layover ${i + 1}">Remove</button></div>`;
+    el.stopList.appendChild(row);
+    const input = $(`stop${i}`);
+    input.dataset.step = stepIdx;           // Enter moves to the next page…
+    input.dataset.noAdvance = '1';          // …but picking an airport does not (you may want another stop)
+    const hint = $(`stop${i}Hint`);
+    setupAutocomplete(input, $(`stop${i}List`), hint, `s${i}`);
+    if (d.ap) {
+      state[`s${i}`] = d.ap;
+      input.value = d.ap.ident;
+      hint.textContent = describeAirport(d.ap);
+      hint.classList.add('selected');
+    } else if (d.text) input.value = d.text;
+    $(`stop${i}Min`).value = String(d.minutes || 45);
+    $(`stop${i}Refuel`).value = d.refuel === false ? 'none' : 'full';
+    row.querySelector('.stop-remove').addEventListener('click', () => {
+      const rows = readStopsLoose();
+      rows.splice(i, 1);
+      renderStopRows(rows);
+    });
+  });
+  el.addStopBtn.hidden = data.length >= MAX_STOPS;
+  el.stopHint.textContent = data.length ? 'Stops are flown in the order shown. Remove them all to fly nonstop.' : STOP_HINT;
+}
+
+/**
+ * Fuel-stop suggestions for a leg that is TIGHT or NO-GO: nearby airports with a decent runway where
+ * (a) you can reach the stop with the fuel you have, and (b) the rest of the leg is reachable on full tanks.
+ * Range is a rough no-wind estimate (90% of true airspeed); the re-plan gives the exact answer.
+ */
+function fuelStopOptions(route, legIndex, p, fuelAtTakeoff) {
+  if (p.stops.length >= MAX_STOPS) return [];
+  const a = route[legIndex], b = route[legIndex + 1];
+  const tas = tasAtAltitude(p.aircraft.cruise_ktas_8000, p.altitude);
+  const rangeNM = (fuel) => Math.max(0, (fuel - TAXI_RUNUP_GAL) / p.aircraft.burn_gph - reserveMinutes(p.dayNight) / 60) * tas * 0.9;
+  if (rangeNM(fuelAtTakeoff) <= 0) return [];
+  return findLayoverOptions(a, b, {
+    exclude: new Set(route.map((r) => r.ident)),
+    feasible: (d1, d2) => d1 <= rangeNM(fuelAtTakeoff) && d2 <= rangeNM(p.aircraft.usable_fuel_gal),
+  });
+}
+
+function renderRoutePlan(p, route, result, winds, tas) {
+  const { legs, totals, worstIndex, overall } = result;
+  const groundH = totals.groundMinutes / 60;
+  const name = (l) => `${esc(l.from.ident)} → ${esc(l.to.ident)}`;
+
+  el.cards.innerHTML = [
+    statCard('Total distance', fmt(totals.distanceNM, 1), 'NM', `${legs.length} legs · ${legs.length - 1} layover${legs.length > 2 ? 's' : ''}`),
+    statCard('Time in the air', formatHours(totals.flightHours), '', 'at forecast ground speeds'),
+    statCard('Time on the ground', totals.groundMinutes ? formatHours(groundH) : '—', '', 'at your layovers'),
+    statCard('Total trip time', formatHours(totals.flightHours + groundH), '', 'air + ground'),
+    statCard('Fuel burned', fmt(totals.tripGal, 1), 'gal', `incl. ${TAXI_RUNUP_GAL} gal taxi per leg`),
+    statCard('Fuel cost', `$${fmt(totals.tripGal * p.fuelPrice, 2)}`, '', `${fmt(totals.tripGal, 1)} gal × $${fmt(p.fuelPrice, 2)}`),
+  ].join('');
+
+  // Leg-by-leg table with the layovers in between.
+  const rows = legs.map((l, i) => {
+    const stop = p.stops[i];
+    const layover = i < legs.length - 1 && stop
+      ? `<tr class="layover-row"><td colspan="8">Layover at <b>${esc(l.to.ident)}</b> — ${fmt(stop.minutes)} min on the ground · ${stop.refuel ? `refuel to full (${fmt(p.aircraft.usable_fuel_gal, 1)} gal)` : 'no refuel'}</td></tr>`
+      : '';
+    return `<tr><td><b>Leg ${i + 1}</b><br><small>${name(l)}</small></td>` +
+      `<td class="num">${fmt(l.distanceNM, 1)} NM</td><td class="num">${formatDeg(l.trueCourse)}</td><td class="num">${formatDeg(l.wt.trueHeading)}</td>` +
+      `<td class="num">${fmt(l.wt.groundSpeed)} kt</td><td class="num">${formatHours(l.hours)}</td>` +
+      `<td class="num">${fmt(l.fuelAtTakeoff, 1)} → ${fmt(l.fuelAtLanding, 1)}</td>` +
+      `<td><span class="verdict ${l.verdict}">${l.verdict}</span></td></tr>${layover}`;
+  }).join('');
+  el.legsCard.className = 'card v-info';
+  el.legsCard.hidden = false;
+  el.legsCard.innerHTML =
+    '<h3>Your legs</h3><div class="alt-table-wrap"><table class="alt-table legs-table"><thead><tr>' +
+    '<th>Leg</th><th>Dist.</th><th>Course</th><th>Hdg</th><th>GS</th><th>Time</th><th>Fuel (gal)</th><th>Verdict</th>' +
+    `</tr></thead><tbody>${rows}</tbody></table></div>` +
+    '<p class="note">Fuel (gal) is shown as takeoff → landing. Each leg is checked on its own: the fuel at takeoff must cover that leg\'s trip fuel plus the legal reserve, so you land with the reserve intact.</p>';
+
+  // Fuel verdict for the whole trip = the tightest leg.
+  const w = legs[worstIndex];
+  el.fuelVerdict.className = `card v-${overall}`;
+  el.fuelVerdict.innerHTML =
+    `<h3>Fuel &amp; reserves <span class="verdict ${overall}">${overall}</span></h3>` +
+    `<div class="row"><span>Fuel burned, all legs</span><span>${fmt(totals.tripGal, 1)} gal</span></div>` +
+    `<div class="row"><span>Legal reserve at every landing — VFR ${esc(p.dayNight)} (${reserveMinutes(p.dayNight)} min @ ${p.aircraft.burn_gph} gph)</span><span>${fmt(w.reserveGal, 1)} gal</span></div>` +
+    `<div class="row"><span><strong>Tightest leg</strong></span><span><strong>Leg ${worstIndex + 1}: ${name(w)}</strong></span></div>` +
+    `<div class="row"><span>Fuel at takeoff on that leg</span><span>${fmt(w.fuelAtTakeoff, 1)} gal</span></div>` +
+    `<div class="row"><span>Margin beyond legal reserve</span><span>${w.marginGal >= 0 ? '' : '−'}${fmt(Math.abs(w.marginGal), 1)} gal (${w.marginMin >= 0 ? '' : '−'}${fmt(Math.abs(w.marginMin))} min)</span></div>` +
+    `<p class="note">${overall === 'NO-GO' ? 'At least one leg does not have enough fuel. Add fuel, refuel at a layover, add a stop, or choose a different aircraft.' : overall === 'TIGHT' ? 'Every leg is legal, but at least one has less than 30 extra minutes beyond the FAR minimum.' : 'Every leg has at least 30 extra minutes beyond the FAR minimum reserve.'} Reserves per 14 CFR 91.151 (${p.dayNight === 'night' ? '45 min night' : '30 min day'}).</p>`;
+
+  // VFR cruising altitude check, leg by leg (course changes at each stop).
+  const checks = legs.map((l) => vfrAltitudeCheck(l.trueCourse, p.altitude));
+  const allLegal = checks.every((c) => c.legal || !c.applies);
+  el.altitudeCheck.className = `card ${allLegal ? 'v-ok' : 'v-warn'}`;
+  el.altitudeCheck.innerHTML =
+    '<h3>VFR cruising altitude — 14 CFR 91.159</h3>' +
+    `<div class="row"><span>Planned altitude</span><span>${fmt(p.altitude)} ft MSL</span></div>` +
+    legs.map((l, i) => {
+      const c = checks[i];
+      const verdict = !c.applies ? 'rule not applicable here' : c.legal ? 'legal' : `change to ${c.suggestions.map((x) => fmt(x)).join(' or ')} ft`;
+      return `<div class="row"><span>Leg ${i + 1} · ${formatDeg(l.trueCourse)} true (${c.rule})</span><span>${verdict}</span></div>`;
+    }).join('') +
+    '<p class="note">The rule uses <em>magnetic</em> course; this app uses true course as an approximation. Near 000°/180° magnetic variation can change the answer — check your chart. Your course changes at each layover, so the legal altitude can too.</p>';
+
+  // Winds used, leg by leg.
+  el.windInfo.className = 'card v-info';
+  el.windInfo.innerHTML =
+    '<h3>Winds aloft used in each wind triangle</h3>' +
+    legs.map((l, i) => {
+      const hw = l.wt.headwind;
+      return `<div class="row"><span>Leg ${i + 1} · ${name(l)}</span><span>${formatDeg(winds[i].dir)} at ${fmt(winds[i].speed)} kt (${Math.abs(hw) < 0.5 ? 'no head/tailwind' : `${fmt(Math.abs(hw))} kt ${hw > 0 ? 'head' : 'tail'}wind`})</span></div>`;
+    }).join('') +
+    `<div class="row"><span>Source</span><span>${esc(winds[0].sourceLabel)}</span></div>` +
+    `<p class="note">One forecast sample at each leg's midpoint, TAS ${fmt(tas)} kt at ${fmt(p.altitude)} ft (approx.). Actual winds vary along each leg and with time.</p>`;
+
+  showVerdictAlert(overall, {
+    verdict: { requiredGal: w.requiredGal, marginGal: w.marginGal, marginMin: w.marginMin },
+    trip: w.tripGal, reserve: w.reserveGal, fuelOnBoard: w.fuelAtTakeoff,
+    dep: w.from, dest: w.to,
+    routeLabel: route.map((r) => r.ident).join(' → '),
+    legLabel: `Leg ${worstIndex + 1} (${w.from.ident} → ${w.to.ident})`,
+    options: overall === 'GO' ? [] : fuelStopOptions(route, worstIndex, p, w.fuelAtTakeoff),
+    insertAt: worstIndex,
+  });
+}
+
+async function planMultiLeg(p) {
+  const route = [p.dep, ...p.stops.map((s) => s.ap), p.dest];
+  const myId = ++state.planId;
+  const stale = () => myId !== state.planId;
+  el.planBtn.disabled = true;
+  el.planBtn.textContent = 'Planning…';
+  el.emptyState.hidden = true;
+  el.planOutput.hidden = false;
+  el.planNotice.hidden = true;
+  el.legsCard.hidden = true;
+  el.cards.innerHTML = '<div class="card stat loading">Computing each leg and fetching winds aloft…</div>';
+  el.fuelVerdict.innerHTML = el.altitudeCheck.innerHTML = el.windInfo.innerHTML = '';
+  el.fuelVerdict.className = el.altitudeCheck.className = el.windInfo.className = 'card';
+  el.weather.innerHTML = route.map((a) => wxCard('', a, null, null)).join('');
+
+  const alternates = findAlternatesAlongRoute(route);
+  drawRoute(route, alternates);
+  renderAlternates(alternates, p.dest, null);
+  if (map) map.invalidateSize();
+  if (window.lenis) window.lenis.scrollTo(el.results, { offset: -64, duration: 1.6 });
+  else el.results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const wxPromises = route.map((a) => Promise.all([getMetar(a.ident), getTaf(a.ident)]));
+  const altMetarsPromise = getMetars(alternates.slice(0, 3).map((a) => a.ident));
+
+  // One wind sample per leg, at that leg's midpoint.
+  const notices = [];
+  const winds = await Promise.all(route.slice(0, -1).map(async (a, i) => {
+    if (p.windSource === 'manual') return { dir: p.manualWind.dir, speed: p.manualWind.speed, sourceLabel: 'Manual entry' };
+    const mid = midpoint(a.lat, a.lon, route[i + 1].lat, route[i + 1].lon);
+    const w = await getWindsAloft(mid.lat, mid.lon, p.altitude);
+    if (w.ok) return { dir: w.dir, speed: w.speed, sourceLabel: `Open-Meteo forecast, ${w.level.hpa} hPa (≈${fmt(w.level.ft)} ft), ${w.time}, sampled at each leg's midpoint` };
+    notices.push(`Leg ${i + 1}: ${w.message} That leg is calculated with ZERO wind.`);
+    return { dir: 0, speed: 0, sourceLabel: 'NONE for at least one leg — forecast unavailable, zero wind used there' };
+  }));
+  if (stale()) return;
+
+  const tas = tasAtAltitude(p.aircraft.cruise_ktas_8000, p.altitude);
+  const result = planRoute({
+    route, tas, winds, burnGph: p.aircraft.burn_gph, usableGal: p.aircraft.usable_fuel_gal,
+    startFuelGal: p.fuelOnBoard, dayNight: p.dayNight, stops: p.stops,
+  });
+  if (!result.ok) {
+    el.cards.innerHTML = '';
+    el.planNotice.hidden = false;
+    el.planNotice.className = 'alert alert-error';
+    el.planNotice.textContent = `Leg ${result.legIndex + 1} (${route[result.legIndex].ident} → ${route[result.legIndex + 1].ident}) has no wind-triangle solution: ${result.error} Try a different altitude or enter winds manually.`;
+  } else {
+    renderRoutePlan(p, route, result, winds, tas);
+    if (notices.length) {
+      el.planNotice.className = 'alert alert-warn';
+      el.planNotice.textContent = notices.join(' ');
+      el.planNotice.hidden = false;
+    }
+  }
+  el.planBtn.disabled = false;
+  el.planBtn.textContent = 'Plan flight';
+
+  for (let i = 0; i < route.length; i++) {
+    const [metar, taf] = await wxPromises[i];
+    if (stale()) return;
+    const node = $(`wx-${route[i].ident}`);
+    if (node) node.outerHTML = wxCard('', route[i], metar, taf);
+  }
+  const altMetars = await altMetarsPromise;
+  if (stale()) return;
+  renderAlternates(alternates, p.dest, altMetars);
+}
 
 // ---------- plan ----------
 async function plan(e) {
@@ -467,6 +733,8 @@ async function plan(e) {
     el.formError.hidden = false;
     return;
   }
+  if (p.stops.length) return planMultiLeg(p);
+  el.legsCard.hidden = true;
 
   const myId = ++state.planId;
   const stale = () => myId !== state.planId;
@@ -482,7 +750,7 @@ async function plan(e) {
 
   // Alternates + map are synchronous — draw immediately.
   const alternates = findAlternates(p.dep, p.dest);
-  drawRoute(p.dep, p.dest, alternates);
+  drawRoute([p.dep, p.dest], alternates);
   renderAlternates(alternates, p.dest, null);
   // The results sit below the last form page — scroll down to the map.
   if (map) map.invalidateSize();
@@ -552,6 +820,14 @@ async function init() {
   initMap();
   setupAutocomplete(el.dep, el.depList, el.depHint, 'dep');
   setupAutocomplete(el.dest, el.destList, el.destHint, 'dest');
+  renderStopRows([]);
+  el.addStopBtn.addEventListener('click', () => {
+    const rows = readStopsLoose();
+    if (rows.length >= MAX_STOPS) return;
+    rows.push({ ap: null, text: '', minutes: 45, refuel: true });
+    renderStopRows(rows);
+    $(`stop${rows.length - 1}`).focus({ preventScroll: true });
+  });
 
   el.aircraft.addEventListener('change', onAircraftChange);
   el.customUsable.addEventListener('input', () => { if (el.aircraft.value === CUSTOM_ID) el.fuelOnBoard.value = el.customUsable.value; });
@@ -572,6 +848,7 @@ async function init() {
     el.destHint.textContent = a ? describeAirport(a) : 'Type at least 2 characters';
     el.depHint.classList.toggle('selected', !!b);
     el.destHint.classList.toggle('selected', !!a);
+    renderStopRows(readStopsLoose().reverse());   // the layovers are flown in the opposite order too
   });
   el.form.addEventListener('submit', plan);
 

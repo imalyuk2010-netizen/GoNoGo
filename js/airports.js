@@ -5,6 +5,8 @@ import { haversineNM, distanceToRouteSegmentNM } from './nav.js';
 let _airports = [];
 let _byIdent = new Map();
 let _index = []; // pre-lowercased search fields
+// Names that signal airfields the public can't normally use for a fuel stop.
+const NOT_PUBLIC = /\b(naval|air force|afb|army|marine corps|joint base|air station|heliport|helipad|seaplane|nas)\b/i;
 
 /** Load and index the airport database. Returns the number of airports loaded. */
 export async function loadAirports(url = 'data/airports.json') {
@@ -101,6 +103,69 @@ export function findAlternates(dep, dest, { maxOffsetNM = 25, minRunwayFt = 2500
     });
   }
   out.sort((x, y) => x.distFromDestNM - y.distFromDestNM);
+  return out.slice(0, limit);
+}
+
+/**
+ * Alternates for a multi-leg route: airports within `maxOffsetNM` of ANY leg, runway ≥ `minRunwayFt`,
+ * excluding every airport on the route, sorted by distance from the final destination.
+ */
+export function findAlternatesAlongRoute(route, { maxOffsetNM = 25, minRunwayFt = 2500, limit = 5 } = {}) {
+  const dest = route[route.length - 1];
+  const ids = new Set(route.map((r) => r.ident));
+  const pad = maxOffsetNM / 60 + 0.1;
+  const lats = route.map((r) => r.lat);
+  const lons = route.map((r) => r.lon);
+  const cosLat = Math.max(0.2, Math.cos((lats.reduce((s, v) => s + v, 0) / lats.length) * (Math.PI / 180)));
+  const minLat = Math.min(...lats) - pad, maxLat = Math.max(...lats) + pad;
+  const minLon = Math.min(...lons) - pad / cosLat, maxLon = Math.max(...lons) + pad / cosLat;
+
+  const out = [];
+  for (const a of _airports) {
+    if (ids.has(a.ident)) continue;
+    if (!(a.runway_length_ft >= minRunwayFt)) continue;
+    if (a.lat < minLat || a.lat > maxLat || a.lon < minLon || a.lon > maxLon) continue;
+    let off = Infinity;
+    for (let i = 0; i < route.length - 1; i++) {
+      off = Math.min(off, distanceToRouteSegmentNM(route[i].lat, route[i].lon, route[i + 1].lat, route[i + 1].lon, a.lat, a.lon));
+    }
+    if (off > maxOffsetNM) continue;
+    out.push({ ...a, distFromRouteNM: off, distFromDestNM: haversineNM(dest.lat, dest.lon, a.lat, a.lon) });
+  }
+  out.sort((x, y) => x.distFromDestNM - y.distFromDestNM);
+  return out.slice(0, limit);
+}
+
+/**
+ * Layover (fuel stop) options between airports `a` and `b`: airports close to the direct route with a
+ * decent runway. `feasible(d1, d2)` lets the caller reject stops that are out of range
+ * (d1 = a → stop, d2 = stop → b, both in NM). Sorted by the extra distance flown (detour).
+ * NOTE: the airport database has no fuel-availability data, so callers must remind pilots to check.
+ */
+export function findLayoverOptions(a, b, { maxOffsetNM = 25, minRunwayFt = 4000, exclude = new Set(), feasible = () => true, limit = 3 } = {}) {
+  const direct = haversineNM(a.lat, a.lon, b.lat, b.lon);
+  const pad = maxOffsetNM / 60 + 0.1;
+  const cosLat = Math.max(0.2, Math.cos(((a.lat + b.lat) / 2) * (Math.PI / 180)));
+  const minLat = Math.min(a.lat, b.lat) - pad, maxLat = Math.max(a.lat, b.lat) + pad;
+  const minLon = Math.min(a.lon, b.lon) - pad / cosLat, maxLon = Math.max(a.lon, b.lon) + pad / cosLat;
+  const minHop = Math.min(20, direct * 0.15);   // don't "stop" a few miles from where you already are
+
+  const out = [];
+  for (const c of _airports) {
+    if (exclude.has(c.ident) || !(c.runway_length_ft >= minRunwayFt) || NOT_PUBLIC.test(c.name || '')) continue;
+    if (c.lat < minLat || c.lat > maxLat || c.lon < minLon || c.lon > maxLon) continue;
+    const off = distanceToRouteSegmentNM(a.lat, a.lon, b.lat, b.lon, c.lat, c.lon);
+    if (off > maxOffsetNM) continue;
+    const d1 = haversineNM(a.lat, a.lon, c.lat, c.lon);
+    const d2 = haversineNM(c.lat, c.lon, b.lat, b.lon);
+    if (d1 < minHop || d2 < minHop || !feasible(d1, d2)) continue;
+    const detourNM = d1 + d2 - direct;
+    // Lower is better: small detour, a stop near the middle of the leg, and a long runway
+    // (the closest thing we have to "has services" — the database does not list fuel).
+    const score = detourNM + Math.abs(d1 - d2) * 0.15 - Math.min(c.runway_length_ft, 8000) / 400;
+    out.push({ ...c, d1, d2, detourNM, distFromRouteNM: off, score });
+  }
+  out.sort((x, y) => x.score - y.score);
   return out.slice(0, limit);
 }
 

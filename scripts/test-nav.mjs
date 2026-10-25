@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
   haversineNM, initialBearing, windTriangle, tasAtAltitude, vfrAltitudeCheck,
-  fuelVerdict, reserveMinutes, tripFuelGal, crossTrackDistanceNM, distanceToRouteSegmentNM,
+  fuelVerdict, reserveMinutes, tripFuelGal, crossTrackDistanceNM, distanceToRouteSegmentNM, planRoute,
 } from '../js/nav.js';
 
 const results = [];
@@ -143,6 +143,61 @@ check('Cross-track: point 0.5° north of an eastbound equator route ≈ 30 NM le
   const beyond = distanceToRouteSegmentNM(0, 0, 0, 10, 0, 12);
   assert.ok(near(beyond, 120, 0.5), `got ${beyond}`);
   return `${xt.toFixed(2)} NM`;
+});
+
+// ---- layovers / multi-leg ----
+const SMF = { ident: 'KSMF', lat: 38.6954, lon: -121.591 };
+const BFL = { ident: 'KBFL', lat: 35.4336, lon: -119.057 };
+const LAX = { ident: 'KLAX', lat: 33.9425, lon: -118.408 };
+const legCfg = { tas: 114, burnGph: 9.5, usableGal: 53, dayNight: 'day' };
+const calm = [{ dir: 0, speed: 0 }, { dir: 0, speed: 0 }];
+
+check('Layovers: a nonstop route is one leg and matches the single-leg math', () => {
+  const r = planRoute({ route: [SMF, LAX], winds: [{ dir: 0, speed: 0 }], startFuelGal: 53, ...legCfg });
+  assert.ok(r.ok && r.legs.length === 1);
+  const d = haversineNM(SMF.lat, SMF.lon, LAX.lat, LAX.lon);
+  assert.ok(near(r.legs[0].distanceNM, d, 1e-9));
+  assert.ok(near(r.legs[0].tripGal, tripFuelGal(d / 114, 9.5), 1e-9));
+  return `${d.toFixed(1)} NM, ${r.legs[0].tripGal.toFixed(1)} gal, ${r.overall}`;
+});
+check('Layovers: two legs add up (distance, fuel) and ground time is summed', () => {
+  const r = planRoute({ route: [SMF, BFL, LAX], winds: calm, startFuelGal: 53, stops: [{ refuel: true, minutes: 45 }], ...legCfg });
+  assert.ok(r.ok && r.legs.length === 2);
+  assert.ok(near(r.totals.distanceNM, r.legs[0].distanceNM + r.legs[1].distanceNM, 1e-9));
+  assert.ok(near(r.totals.tripGal, r.legs[0].tripGal + r.legs[1].tripGal, 1e-9));
+  assert.equal(r.totals.groundMinutes, 45);
+  return `${r.totals.distanceNM.toFixed(0)} NM total, ${r.totals.tripGal.toFixed(1)} gal burned`;
+});
+check('Layovers: refuel to full resets the next leg to full tanks', () => {
+  const r = planRoute({ route: [SMF, BFL, LAX], winds: calm, startFuelGal: 30, stops: [{ refuel: true, minutes: 30 }], ...legCfg });
+  assert.equal(r.legs[0].fuelAtTakeoff, 30);
+  assert.equal(r.legs[1].fuelAtTakeoff, 53);
+  return 'leg 2 takes off with 53 gal';
+});
+check('Layovers: no refuel carries the remaining fuel into the next leg', () => {
+  const r = planRoute({ route: [SMF, BFL, LAX], winds: calm, startFuelGal: 53, stops: [{ refuel: false, minutes: 30 }], ...legCfg });
+  assert.ok(near(r.legs[1].fuelAtTakeoff, 53 - r.legs[0].tripGal, 1e-9));
+  assert.ok(r.legs[1].fuelAtTakeoff < 53);
+  return `leg 2 starts with ${r.legs[1].fuelAtTakeoff.toFixed(1)} gal`;
+});
+check('Layovers: a refuel stop fixes a short-fuel nonstop', () => {
+  const nonstop = planRoute({ route: [SMF, LAX], winds: [{ dir: 0, speed: 0 }], startFuelGal: 34, ...legCfg });
+  const withStop = planRoute({ route: [SMF, BFL, LAX], winds: calm, startFuelGal: 34, stops: [{ refuel: true, minutes: 45 }], ...legCfg });
+  assert.notEqual(nonstop.overall, 'GO');
+  assert.equal(withStop.overall, 'GO');
+  return `nonstop ${nonstop.overall}, with a refuel stop ${withStop.overall}`;
+});
+check('Layovers: overall verdict is the worst leg and worstIndex points at it', () => {
+  const r = planRoute({ route: [SMF, BFL, LAX], winds: calm, startFuelGal: 14, stops: [{ refuel: false, minutes: 30 }], ...legCfg });
+  assert.equal(r.overall, 'NO-GO');
+  assert.equal(r.legs[r.worstIndex].verdict, 'NO-GO');
+  return `worst leg = leg ${r.worstIndex + 1} (${r.legs[r.worstIndex].from.ident} → ${r.legs[r.worstIndex].to.ident})`;
+});
+check('Layovers: an impossible wind on one leg is reported with the leg number', () => {
+  const r = planRoute({ route: [SMF, BFL, LAX], winds: [{ dir: 0, speed: 0 }, { dir: 90, speed: 500 }], startFuelGal: 53, stops: [{ refuel: true, minutes: 30 }], ...legCfg });
+  assert.equal(r.ok, false);
+  assert.equal(r.legIndex, 1);
+  return r.error.slice(0, 50) + '…';
 });
 
 // Optional: verify against the generated airport database if present.

@@ -152,6 +152,7 @@
     <h2 class="va-title" id="vaTitle"></h2>
     <p class="va-text" id="vaText"></p>
     <dl class="va-stats" id="vaStats"></dl>
+    <div class="va-options" id="vaOptions" hidden></div>
     <div class="va-actions">
       <button type="button" class="va-btn va-btn-primary" id="vaReview">Review the plan</button>
       <button type="button" class="va-btn va-btn-ghost" id="vaChange">Change fuel or aircraft</button>
@@ -187,6 +188,15 @@
         <div class="hint" id="destHint">Type at least 2 characters</div>
       </div>
       <button type="button" class="btn-ghost" id="swapBtn" title="Swap departure and destination">⇄ Swap departure and destination</button>
+    </div>
+  </section>
+
+  <section class="step" data-label="Layovers" id="stopsStep">
+    <div class="step-inner">
+      <h2 class="step-q">Any layovers?</h2>
+      <div id="stopList" class="stop-list"></div>
+      <button type="button" class="btn-ghost" id="addStopBtn">+ Add a layover</button>
+      <div class="hint" id="stopHint">Skip this for a nonstop flight. Add up to 3 stops along the way and choose whether to refuel at each one.</div>
     </div>
   </section>
 
@@ -295,6 +305,7 @@
     <div id="planOutput" hidden>
       <div id="planNotice" class="alert alert-warn" hidden></div>
       <div class="cards" id="cards"></div>
+      <div id="legsCard" class="card" hidden></div>
       <div class="two-up">
         <div id="fuelVerdict" class="card"></div>
         <div id="altitudeCheck" class="card"></div>

@@ -209,6 +209,7 @@ document.addEventListener('keydown', (e) => {
 });
 // Picking an airport from the list moves on automatically.
 document.addEventListener('chosen', (e) => {
+  if (e.target?.dataset?.noAdvance) return;
   const idx = e.target?.dataset?.step;
   if (idx !== undefined) setTimeout(() => goTo(steps[Number(idx) + 1]), 350);
 });
