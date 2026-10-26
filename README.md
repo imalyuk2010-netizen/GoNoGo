@@ -92,6 +92,10 @@ GoNoGo is a responsive web app, so one codebase runs everywhere there is a moder
 
 Mobile details: native touch scrolling with CSS scroll-snap (one question per screen), safe-area handling for notches, landscape layouts, number/airport keyboards, 44 px touch targets, and two-finger map panning so the map never traps a scroll. It is a PWA: after the first visit the app opens offline (all 47,985 airports are cached); live weather and map tiles still need a connection.
 
+## License
+
+GoNoGo's own code is released under the [MIT License](LICENSE). Third-party libraries and data keep their own licenses (see "Data sources and licenses" below): Leaflet, Lenis, OurAirports, NOAA Aviation Weather, Open-Meteo and OpenStreetMap.
+
 ## Data sources and licenses
 
 | Source | Used for | License / terms | Key needed |
